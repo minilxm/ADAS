@@ -62,6 +62,8 @@ namespace Analyse
         private decimal            m_DischargeTime;             //老化放电时间可以是小数
         private decimal            m_RechargeTime;              //老化补电时间可以是小数
         private OcclusionLevel     m_OcclusionLevel = OcclusionLevel.H;
+        private C9OcclusionLevel   m_C9OcclusionLevel = C9OcclusionLevel.Level3;//C9的等级与其他泵不一样
+        private CustomProductID    m_CustomPid = CustomProductID.Unknow;//由m_PumpType转换而来
          
         /// <summary>
         /// 泵型号
@@ -70,6 +72,28 @@ namespace Analyse
         {
             get { return m_PumpType; }
             set { m_PumpType = value; }
+        }
+
+        /// <summary>
+        /// 泵型号
+        /// </summary>
+        public CustomProductID CID
+        {
+            get
+            {
+                if( m_CustomPid != CustomProductID.Unknow)
+                {
+                    return m_CustomPid;
+                }
+                else if (!string.IsNullOrEmpty(m_PumpType))
+                {
+                    m_CustomPid = ProductIDConvertor.Name2CustomProductID(m_PumpType);
+                    return m_CustomPid;
+                }
+                else
+                    return CustomProductID.Unknow;
+            }
+            set { m_CustomPid = value; }
         }
 
         /// <summary>
@@ -127,6 +151,16 @@ namespace Analyse
         }
 
         /// <summary>
+        /// C9压力档
+        /// </summary>
+        public C9OcclusionLevel C9OclusionLevel
+        {
+            get { return m_C9OcclusionLevel; }
+            set { m_C9OcclusionLevel = value; }
+        }
+        
+       
+        /// <summary>
         /// 
         /// </summary>
         /// <param name="pumpType"></param>
@@ -135,13 +169,17 @@ namespace Analyse
         /// <param name="chargeTime"></param>
         /// <param name="dischargeTime"></param>
         /// <param name="rechargeTime"></param>
+        /// <param name="oclusionLevel"></param>
+        /// <param name="c9OclusionLevel"></param>
         public AgingParameter(  string     pumpType,
                                 decimal    rate,
                                 decimal    volume,
                                 decimal    chargeTime,
                                 decimal    dischargeTime,
                                 decimal    rechargeTime,
-                                OcclusionLevel oclusionLevel)
+                                OcclusionLevel oclusionLevel,
+                                C9OcclusionLevel c9OclusionLevel = C9OcclusionLevel.Level3
+                              )
         {
            m_PumpType      = pumpType;
            m_Rate          = rate;
@@ -150,6 +188,7 @@ namespace Analyse
            m_DischargeTime = dischargeTime;
            m_RechargeTime  = rechargeTime;
            m_OcclusionLevel = oclusionLevel;
+           m_C9OcclusionLevel = c9OclusionLevel;
         }
 
         /// <summary>
@@ -165,6 +204,7 @@ namespace Analyse
             m_DischargeTime = other.m_DischargeTime;
             m_RechargeTime  = other.m_RechargeTime;
             m_OcclusionLevel = other.m_OcclusionLevel;
+            m_C9OcclusionLevel = other.m_C9OcclusionLevel;
         }
 
 

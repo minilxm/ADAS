@@ -24,7 +24,7 @@
         <!--泵型号-->
         <Label Name="lbPumpType" Grid.Row="0" Grid.Column="0" Margin="3" Padding="2" FontSize="12" VerticalAlignment="Center" HorizontalAlignment="Left">泵型号</Label>
         <ComboBox Name="cmPumpType"  Grid.Row="0" Grid.Column="1" Margin="1" Padding="1" FontSize="12" VerticalAlignment="Center" HorizontalAlignment="Left" Width="120" SelectionChanged="OnSelectionChanged" >
-            
+
         </ComboBox>
 
         <!--速率-->
@@ -39,11 +39,11 @@
 
         <!--充电时长-->
         <Label Name   ="lbOcclusionLevel"  Grid.Row="1" Grid.Column="0" Margin="3" Padding="2" FontSize="12" VerticalAlignment="Center" HorizontalAlignment="Left">压力档位</Label>
-        <ComboBox Name="cmOcclusionLevel"  Grid.Row="1" Grid.Column="1" Margin="1" Padding="1" FontSize="12" VerticalAlignment="Center" HorizontalAlignment="Left" Width="120" SelectionChanged="OnOcclusionChanged" >
-            <ComboBoxItem>L</ComboBoxItem>
+        <ComboBox Name="cmOcclusionLevel"  Grid.Row="1" Grid.Column="1" Margin="1,8,0,0" Padding="1" FontSize="12" VerticalAlignment="Top" HorizontalAlignment="Left" Width="120" SelectionChanged="OnOcclusionChanged" Grid.ColumnSpan="2" >
+            <!--<ComboBoxItem>L</ComboBoxItem>
             <ComboBoxItem>C</ComboBoxItem>
             <ComboBoxItem>H</ComboBoxItem>
-            <ComboBoxItem>N</ComboBoxItem>
+            <ComboBoxItem>N</ComboBoxItem>-->
         </ComboBox>
         <!--Label Name   ="lbChargeUnit" Grid.Row="1" Grid.Column="2" Margin="3" Padding="2" FontSize="12" VerticalAlignment="Center" HorizontalAlignment="Left">h</-->
 

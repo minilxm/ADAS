@@ -72,6 +72,7 @@ namespace  AgingSystem
         private bool                  m_bKeepCheckPumpStopStatus = false;                                //用于检查停止后，泵有没有停止
         private bool                  m_bCanStartCheck              = false;                             //是否可以启动检查线程
         private ProductID             m_CurrentProductID            = ProductID.Unknow;
+        private CustomProductID       m_CurrentCustomProductID = CustomProductID.Unknow;
         private ushort                m_QueryInterval               = 60;
         private System.Timers.Timer   m_CheckPumpStatusTimer        = new System.Timers.Timer();         //设置检查泵状态持续时钟，主要用于计时，超时将置一个状态
         private System.Timers.Timer   m_CheckPumpStopStatusTimer        = new System.Timers.Timer();     //设置检查泵停止状态持续时钟，主要用于计时，超时将置一个状态
@@ -515,18 +516,18 @@ namespace  AgingSystem
                         //每次都要重新统计已经结束的数量
                         if (pump != null && pump.BeginBattaryDepleteTime.Year > 2000 && pump.BeginRechargeTime.Year > 2000 && pump.EndAgingTime.Year > 2000)
                         {
-                            if (this.m_CurrentProductID == ProductID.GrasebyF6)
+                            if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double || m_CurrentCustomProductID == CustomProductID.WZS50F6_Double)
                             {
-                                if(pump.Channel%2==1)
+                                if (pump.Channel % 2 == 1)
                                 {
                                     completeCount++;
                                 }
-                            } 
+                            }
                             else
                                 completeCount++;
-                            if (this.m_CurrentProductID == ProductID.GrasebyF6)
+                            if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double || m_CurrentCustomProductID == CustomProductID.WZS50F6_Double)
                             {
-                                this.Dispatcher.BeginInvoke(new DeleUpdateCompleteCount(UpdateCompleteCount), new object[] { completeCount, ((List<Tuple<int, int, int>>)m_HashPumps[m_DockNo]).Count/2 });
+                                this.Dispatcher.BeginInvoke(new DeleUpdateCompleteCount(UpdateCompleteCount), new object[] { completeCount, ((List<Tuple<int, int, int>>)m_HashPumps[m_DockNo]).Count / 2 });
                             }
                             else
                             {
@@ -814,10 +815,15 @@ namespace  AgingSystem
             }
             AgingParameter para = m_DockParameter[m_DockNo] as AgingParameter;
             ProductID pid = ProductID.Unknow;
+            CustomProductID cid = CustomProductID.Unknow;
             if (para != null)
             {
-                if (Enum.IsDefined(typeof(ProductID), para.PumpType))
-                    pid = (ProductID)Enum.Parse(typeof(ProductID), para.PumpType);
+                //自从添加了双道泵之后，需要先将泵类型转换成CustomProductID，然后再转成对应的ProductID
+                if (Enum.IsDefined(typeof(CustomProductID), para.PumpType))
+                {
+                    cid = (CustomProductID)Enum.Parse(typeof(CustomProductID), para.PumpType);
+                    pid = ProductIDConvertor.Custom2ProductID(cid);
+                }
                 else
                 {
                     Logger.Instance().ErrorFormat("OnStartClick()->para.PumpType is not defined! para.PumpType={0}", para.PumpType);
@@ -1073,15 +1079,16 @@ namespace  AgingSystem
                         OnConfigrationCompleted(this, new ConfigrationArgs(m_DockParameter));
                     AgingParameter para = m_DockParameter[m_DockNo] as AgingParameter;
                     lbPumpType.Content = "泵型号:" + para.PumpType;
-                    if (Enum.IsDefined(typeof(ProductID), para.PumpType))
-                        m_CurrentProductID = (ProductID)Enum.Parse(typeof(ProductID), para.PumpType);
+                    //先将自定义类型的泵转成真正的ProductID
+                    m_CurrentCustomProductID = ProductIDConvertor.Name2CustomProductID(para.PumpType);
+                    m_CurrentProductID = ProductIDConvertor.Custom2ProductID(m_CurrentCustomProductID);
                 }
                 if (OnPumpSelected != null)
                 {
                     OnPumpSelected(this, new SelectedPumpsArgs(m_HashPumps));
                     string strTemp = string.Empty;
                     string strCompleteTemp = string.Empty;
-                    if (m_CurrentProductID == ProductID.GrasebyF6)
+                    if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double) //双道F6与单道F6要分开处理
                     {
                         strTemp = string.Format("泵数量:{0}/{1}", ((List<Tuple<int, int, int>>)m_HashPumps[dockNo]).Count / 2, DockInfoManager.Instance().Get(dockNo) / 2);
                         strCompleteTemp = string.Format("完成数量:{0}/{1}", 0, ((List<Tuple<int, int, int>>)m_HashPumps[dockNo]).Count/2);
@@ -1473,7 +1480,7 @@ namespace  AgingSystem
                             //channel = (byte)(channel << (info.Channel - 1));
                             //此处的通道号是报警信息包中的通道号，并不是按位定义的,出现报警信息后，要加入此队列,add by 20170708
                             //此处的Channel不是按位存储的，是1，2，3，4，5，6，7，8等自然数,如果是偶数（2道泵），则不必加入到已耗尽队列中去
-                            if (m_CurrentProductID== ProductID.GrasebyF6 )
+                            if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double || m_CurrentCustomProductID == CustomProductID.WZS50F6_Double)
                             {
                                 if (info.Channel % 2 == 1)
                                     m_DepleteManager.UpdateDepleteInfo(cmd.RemoteSocket.IP, info.Channel);
@@ -1538,7 +1545,7 @@ namespace  AgingSystem
                             channel = (byte)(channel << (newInfo.Channel - 1));
                             //此处的通道号是报警信息包中的通道号，并不是按位定义的,出现报警信息后，要加入此队列add by 20170708
                             //此处的Channel不是按位存储的，是1，2，3，4，5，6，7，8等自然数,如果是偶数（2道泵），则不必加入到已耗尽队列中去
-                            if (m_CurrentProductID == ProductID.GrasebyF6)
+                            if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double || m_CurrentCustomProductID == CustomProductID.WZS50F6_Double)
                             {
                                 if (info.Channel % 2 == 1)
                                     m_DepleteManager.UpdateDepleteInfo(cmd.RemoteSocket.IP, newInfo.Channel);
@@ -1623,7 +1630,7 @@ namespace  AgingSystem
                     for (int j = 0; j < m_Controllers[i].AgingPumpList.Count; j++)
                     {
                         //F6不要判断2道泵
-                        if(m_CurrentProductID==ProductID.GrasebyF6)
+                        if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double || m_CurrentCustomProductID == CustomProductID.WZS50F6_Double)
                         {
                             if (m_Controllers[i].AgingPumpList[j].Channel % 2 == 0)
                                 continue;
@@ -1790,7 +1797,7 @@ namespace  AgingSystem
                         {
                             index = 0;
                             worksheet.Cells[rowIndex, ++index] = rowIndex-1;
-                            if(m_CurrentProductID==ProductID.GrasebyF6)
+                            if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double || m_CurrentCustomProductID == CustomProductID.WZS50F6_Double)
                             {
                                 if (pumpList[j].Channel%2==1)
                                     worksheet.Cells[rowIndex, ++index] = string.Format("{0}—{1}—{2}(1道泵)", m_DockNo, pumpList[j].RowNo, pumpList[j].Channel);
@@ -1824,7 +1831,10 @@ namespace  AgingSystem
                                 //每个报警第一次发生的时间需要记录
                                 worksheet.Cells[rowIndex, ++index] = pumpList[j].GetAlarmStringAndOcurredTime();
                                 //电池老化是否合格
-                                if(m_CurrentProductID==ProductID.GrasebyF6 || m_CurrentProductID==ProductID.GrasebyF8)
+                                if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double 
+                                    || m_CurrentCustomProductID == CustomProductID.WZS50F6_Double
+                                    || m_CurrentCustomProductID == CustomProductID.GrasebyF8
+                                    )
                                 {
                                     if((pumpList[j].BeginBattaryDepleteTime-pumpList[j].BeginDischargeTime).TotalHours> 3.2 
                                         && (pumpList[j].BeginBattaryDepleteTime-pumpList[j].BeginLowVoltageTime).TotalMinutes>30
@@ -2323,7 +2333,7 @@ namespace  AgingSystem
                         iChannel = (int)m_HashRowNo[connected_controllers[i].RowNo];
                         channel = (byte)(iChannel & 0x000000FF);
                         //如果是F6，F6双通道共用电池，在放电的时候第二通道不用执行放电命令，因为第一通道已经执行放电， 20170922
-                        if (this.m_CurrentProductID == ProductID.GrasebyF6)
+                        if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double || m_CurrentCustomProductID == CustomProductID.WZS50F6_Double)
                             channel &= 0x55; //二进制01010101，奇数串口位接1通道
                         //老化放电命令
                         m_CmdManager.SendCmdDischarge(connected_controllers[i].SocketToken, CommandResponseForDischarge, null, channel);
@@ -2402,7 +2412,7 @@ namespace  AgingSystem
                     if (depleteController != null)
                     {
                         channels = m_DepleteManager.DepletePumpQueue[i].GenChannel();
-                        if (this.m_CurrentProductID == ProductID.GrasebyF6)
+                        if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double || m_CurrentCustomProductID == CustomProductID.WZS50F6_Double)
                             channels &= 0x55; //二进制01010101，奇数串口位接1通道
                         m_CmdManager.SendCmdRecharge(channels, depleteController.SocketToken, CommandResponseForReCharge);
                         Logger.Instance().InfoFormat("向IP={0}的控制器发送补电命令，通道号={1}", depleteController.IP, channels);
@@ -2457,7 +2467,8 @@ namespace  AgingSystem
                     }
 
                     AgingPump pumpSecond = null;
-                    if(this.m_CurrentProductID==ProductID.GrasebyF6)
+
+                    if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double || m_CurrentCustomProductID == CustomProductID.WZS50F6_Double)
                     {
                         if (ch % 2 == 1)
                         {

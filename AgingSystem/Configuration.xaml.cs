@@ -66,23 +66,42 @@ namespace  AgingSystem
             InitSelectedPumps();
         }
 
+        /// <summary>
+        /// 初始化泵的类型（自定义的类型）
+        /// </summary>
         private void InitPumpType()
         {
             cmPumpType.ItemsSource = ProductIDConvertor.GetAllCustomProductIDName();
         }
 
+        /// <summary>
+        /// 重新初始化压力等级，C9有个等级，其他泵则只有4个
+        /// </summary>
+        /// <param name="cid"></param>
+        private void InitPressureLevel(CustomProductID cid)
+        {
+            if (cid == CustomProductID.GrasebyC9)
+            {
+                cmOcclusionLevel.ItemsSource = Enum.GetNames(typeof(C9OcclusionLevel));
+            }
+            else
+            {
+                cmOcclusionLevel.ItemsSource = Enum.GetNames(typeof(OcclusionLevel));
+            }
+        }
+
+        /// <summary>
+        /// 当已经配置完成后，重新再进入配置界面时，要将之前的参数赋值
+        /// </summary>
         private void InitParameter()
         {
             if(DockWindow.m_DockParameter.ContainsKey(m_DockNo))
             {
                 AgingParameter para = DockWindow.m_DockParameter[m_DockNo] as AgingParameter;
                 int index = -1;
-                ComboBoxItem item = null;
                 for (int i = 0; i < cmPumpType.Items.Count; i++)
                 {
-                    item = cmPumpType.Items[i] as ComboBoxItem;
-                    //cmPumpType.Items[9]
-                    if (string.Compare(item.Content.ToString(), para.PumpType, true) == 0)
+                    if (string.Compare(cmPumpType.Items[i].ToString(), para.PumpType, true) == 0)
                     {
                         index = i;
                         break;
@@ -91,25 +110,34 @@ namespace  AgingSystem
                 if (index >= 0)
                 {
                     cmPumpType.SelectedIndex = index;
-                }
-                for (int i = 0; i < cmOcclusionLevel.Items.Count; i++)
-                {
-                    item = cmOcclusionLevel.Items[i] as ComboBoxItem;
-                    //cmPumpType.Items[9]
-                    if (string.Compare(item.Content.ToString(), para.OclusionLevel.ToString(), true) == 0)
+                    CustomProductID cid = ProductIDConvertor.Name2CustomProductID(para.PumpType);
+                    for (int i = 0; i < cmOcclusionLevel.Items.Count; i++)
                     {
-                        index = i;
-                        break;
+                        if (cid == CustomProductID.GrasebyC9)
+                        {
+                            if (string.Compare(cmOcclusionLevel.Items[i].ToString(), para.C9OclusionLevel.ToString(), true) == 0)
+                            {
+                                index = i;
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            if (string.Compare(cmOcclusionLevel.Items[i].ToString(), para.OclusionLevel.ToString(), true) == 0)
+                            {
+                                index = i;
+                                break;
+                            }
+                        }
                     }
-                }
-                if (index >= 0)
-                {
-                    cmOcclusionLevel.SelectedIndex = index;
+                    if (index >= 0)
+                    {
+                        cmOcclusionLevel.SelectedIndex = index;
+                    }
                 }
                 tbRate.Text = para.Rate.ToString();
                 tbVolume.Text = para.Volume.ToString();
                 tbCharge.Text = para.ChargeTime.ToString();
-                //tbDischarge.Text = para.DischargeTime.ToString();
                 tbRecharge.Text = para.RechargeTime.ToString();
             }
         }
@@ -281,12 +309,12 @@ namespace  AgingSystem
                 if(bRet==true)
                 {
                     int index = -1;
-                    ComboBoxItem item = null;
+                    //ComboBoxItem item = null;
                     for(int i = 0;i<cmPumpType.Items.Count;i++)
                     {
-                        item = cmPumpType.Items[i] as ComboBoxItem;
+                        //item = cmPumpType.Items[i]// as ComboBoxItem;
                         //cmPumpType.Items[9]
-                        if( string.Compare(item.Content.ToString(),parameterList.Args.m_PumpType, true)==0)
+                        if (string.Compare(cmPumpType.Items[i].ToString(), parameterList.Args.m_PumpType, true) == 0)
                         {
                             index = i;
                             break;
@@ -298,9 +326,7 @@ namespace  AgingSystem
                     }
                     for(int i = 0;i<cmOcclusionLevel.Items.Count;i++)
                     {
-                        item = cmOcclusionLevel.Items[i] as ComboBoxItem;
-                        //cmPumpType.Items[9]
-                        if( string.Compare(item.Content.ToString(),parameterList.Args.m_OccLevel, true)==0)
+                        if( string.Compare(cmOcclusionLevel.Items[i].ToString(),parameterList.Args.m_OccLevel, true)==0)
                         {
                             index = i;
                             break;
@@ -336,28 +362,42 @@ namespace  AgingSystem
                 MessageBox.Show("请将参数填写完整");
                 return;
             }
-            ComboBoxItem item      = cmPumpType.SelectedItem as ComboBoxItem;
-            ComboBoxItem itemLevel = cmOcclusionLevel.SelectedItem as ComboBoxItem;
+            string szCustomPid = cmPumpType.Items[cmPumpType.SelectedIndex].ToString();
+            string szPressureLevel = cmOcclusionLevel.Items[cmOcclusionLevel.SelectedIndex].ToString();
             decimal rate           = Convert.ToDecimal(float.Parse(tbRate.Text).ToString("F1"));
             decimal volume         = Convert.ToDecimal(float.Parse(tbVolume.Text).ToString("F1"));
             decimal charge         = Convert.ToDecimal(tbCharge.Text);
-           
-            OcclusionLevel level   = OcclusionLevel.H;
-            if(Enum.IsDefined(typeof(OcclusionLevel), itemLevel.Content.ToString()))
-                level = (OcclusionLevel)Enum.Parse(typeof(OcclusionLevel), itemLevel.Content.ToString());
+
+            CustomProductID cid = ProductIDConvertor.Name2CustomProductID(szCustomPid);
+            OcclusionLevel level = OcclusionLevel.H;
+            C9OcclusionLevel c9Level = C9OcclusionLevel.Level3;
+
+            if (cid == CustomProductID.GrasebyC9)
+            {
+                if (Enum.IsDefined(typeof(C9OcclusionLevel), szPressureLevel))
+                    c9Level = (C9OcclusionLevel)Enum.Parse(typeof(C9OcclusionLevel), szPressureLevel);
+                else
+                    Logger.Instance().ErrorFormat("Configuration::OnSave()->压力转换出错,C9OcclusionLevel={0}", szPressureLevel);
+            }
             else
-                Logger.Instance().ErrorFormat("Configuration::OnSave()->压力转换出错,OcclusionLevel={0}", itemLevel.Content.ToString());
+            {
+                if (Enum.IsDefined(typeof(OcclusionLevel), szPressureLevel))
+                    level = (OcclusionLevel)Enum.Parse(typeof(OcclusionLevel), szPressureLevel);
+                else
+                    Logger.Instance().ErrorFormat("Configuration::OnSave()->压力转换出错,OcclusionLevel={0}", szPressureLevel);
+            }
+            
             decimal discharge = 0;
             decimal recharge  = Convert.ToDecimal(tbRecharge.Text);
-
             Hashtable dockParameter = new Hashtable();
-            AgingParameter para = new AgingParameter(item.Content.ToString(),
+            AgingParameter para = new AgingParameter(szCustomPid,
                                                      rate,
                                                      volume,
                                                      charge,
                                                      discharge,
                                                      recharge,
-                                                     level);
+                                                     level,
+                                                     c9Level);
             for(int i=0;i<otherDockCheckBoxGrid.Children.Count;i++)
             {
                 if(otherDockCheckBoxGrid.Children[i] is CheckBox)
@@ -430,6 +470,7 @@ namespace  AgingSystem
                     pump = pumplistGrid.Children[i] as SinglePump;
                     strPumpType = cmPumpType.Items[cmPumpType.SelectedIndex].ToString();
                     cid = ProductIDConvertor.Name2CustomProductID(strPumpType);
+                    InitPressureLevel(cid);
                     if (cid == CustomProductID.GrasebyF6_Double || cid == CustomProductID.WZS50F6_Double)
                     {
                         if (pump.Tag != null && !string.IsNullOrEmpty(pump.Tag.ToString()))
