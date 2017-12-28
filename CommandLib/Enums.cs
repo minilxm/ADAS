@@ -115,6 +115,7 @@ namespace Cmd
         Graseby1200En,
         GrasebyF6_Double,
         WZS50F6_Single,
+        GrasebyC9,
         WZS50F6_Double,
         GrasebyF8,
         Unknow = 0xFF,
@@ -166,6 +167,9 @@ namespace Cmd
                 case CustomProductID.GrasebyF8:
                     pid = ProductID.GrasebyF8;
                     break;
+                case CustomProductID.GrasebyC9:
+                    pid = ProductID.GrasebyC9;
+                    break;
             }
             return pid;
         }
@@ -213,6 +217,9 @@ namespace Cmd
                     break;
                 case CustomProductID.GrasebyF8:
                     name = "GrasebyF8";
+                    break;
+                case CustomProductID.GrasebyC9:
+                    name = "GrasebyC9";
                     break;
                 default:
                     name = string.Empty;
@@ -265,6 +272,9 @@ namespace Cmd
                 case "GrasebyF8":
                     cid = CustomProductID.GrasebyF8;
                     break;
+                case "GrasebyC9":
+                    cid = CustomProductID.GrasebyC9;
+                    break;
                 default:
                     cid = CustomProductID.Unknow;
                     break;
@@ -286,6 +296,7 @@ namespace Cmd
             names.Add("Graseby1200英文");
             names.Add("GrasebyF6双道");
             names.Add("WZS50F6单道");
+            names.Add("GrasebyC9");
             names.Add("WZS50F6双道");
             names.Add("GrasebyF8");
             return names;
