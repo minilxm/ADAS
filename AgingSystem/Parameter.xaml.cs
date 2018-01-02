@@ -11,6 +11,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using Cmd;
 using Analyse;
 
 namespace  AgingSystem
@@ -58,15 +59,19 @@ namespace  AgingSystem
                                  string strVolume,
                                  string strCharge,
                                  string strLevel,
-                                 string strRecharge)
+                                 string strRecharge,
+                                 string strC9Level)
         {
-            chNo.Content        = strNo;
-            lbPumpType.Content  = strPumpType;
-            lbRate.Content      = strRate;    
-            lbVolume.Content    = strVolume; 
-            lbCharge.Content    = strCharge; 
-            lbOcclusionLevel.Content = strLevel;
-            lbRecharge.Content  = strRecharge;
+            chNo.Content = strNo;
+            lbPumpType.Content = strPumpType;
+            lbRate.Content = strRate;
+            lbVolume.Content = strVolume;
+            lbCharge.Content = strCharge;
+            if (strPumpType == ProductIDConvertor.CustomProductID2Name(CustomProductID.GrasebyC9))
+                lbOcclusionLevel.Content = strC9Level;
+            else
+                lbOcclusionLevel.Content = strLevel;
+            lbRecharge.Content = strRecharge;
         }
 
         public void SetCheckedStatus(bool bChecked = true)
