@@ -1614,9 +1614,10 @@ namespace  AgingSystem
 
         public void ExportExcel(string fileName)
         {
+            string excelDir = "老化结果\\";
             string saveFileName = System.IO.Path.GetDirectoryName( System.Reflection.Assembly.GetAssembly(typeof(DockWindow)).Location);
-            string dirName = saveFileName + "\\" + DateTime.Now.ToString("yyyy-MM-dd");
-            string dockName = dirName + "\\" + this.m_DockNo.ToString()+"号货架";
+            string dirName = saveFileName + "\\" + excelDir + DateTime.Now.ToString("yyyy-MM-dd");
+            string dockName = dirName + "\\" + this.m_DockNo.ToString() + "号货架";
             if(!Directory.Exists(dirName))
             {
                 Directory.CreateDirectory(dirName);
@@ -1627,7 +1628,24 @@ namespace  AgingSystem
             }
             saveFileName = dockName + "\\" + fileName;
             if (String.IsNullOrEmpty(saveFileName.Trim()))
+                return; 
+            //生成一份做备份
+            string excelDirBackup = "老化结果备份\\";
+            string saveFileNameBackup = saveFileName;
+            string dirNameBackup = saveFileNameBackup + "\\" + excelDirBackup + DateTime.Now.ToString("yyyy-MM-dd");
+            string dockNameBackup = dirNameBackup + "\\" + this.m_DockNo.ToString() + "号货架";
+            if (!Directory.Exists(dirNameBackup))
+            {
+                Directory.CreateDirectory(dirNameBackup);
+            }
+            if (!Directory.Exists(dockNameBackup))
+            {
+                Directory.CreateDirectory(dockNameBackup);
+            }
+            saveFileNameBackup = dockNameBackup + "\\" + fileName;
+            if (String.IsNullOrEmpty(saveFileNameBackup.Trim()))
                 return; //No name
+
          
             AgingParameter parameter = m_DockParameter[m_DockNo] as AgingParameter;
             int columns = DockInfoManager.Instance().Get(m_DockNo)/5;
@@ -1700,9 +1718,9 @@ namespace  AgingSystem
                                 worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginLowVoltageTime.ToString("yyyy-MM-dd HH:mm:ss");
                                 worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginBattaryDepleteTime.ToString("yyyy-MM-dd HH:mm:ss");
                                 worksheet.Cells[rowIndex, ++index] = pumpList[j].EndAgingTime.ToString("yyyy-MM-dd HH:mm:ss");
-                                worksheet.Cells[rowIndex, ++index] = (pumpList[j].EndAgingTime-pumpList[j].BeginAgingTime).TotalHours.ToString("F2");
-                                worksheet.Cells[rowIndex, ++index] = (pumpList[j].BeginBattaryDepleteTime-pumpList[j].BeginDischargeTime).TotalHours.ToString("F2");//耗尽－开始
-                                worksheet.Cells[rowIndex, ++index] = (pumpList[j].BeginBattaryDepleteTime-pumpList[j].BeginLowVoltageTime).TotalHours.ToString("F2");//耗尽－低电
+                                worksheet.Cells[rowIndex, ++index] = (pumpList[j].EndAgingTime - pumpList[j].BeginAgingTime).TotalMinutes.ToString("F1");
+                                worksheet.Cells[rowIndex, ++index] = (pumpList[j].BeginBattaryDepleteTime-pumpList[j].BeginDischargeTime).TotalMinutes.ToString("F1");//耗尽－开始
+                                worksheet.Cells[rowIndex, ++index] = (pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginLowVoltageTime).TotalMinutes.ToString("F1");//耗尽－低电
                                 bool bPass = pumpList[j].IsPass();
                                 worksheet.Cells[rowIndex, ++index] = bPass==true?"通过":"失败";
                                 //worksheet.Cells[rowIndex, ++index] = pumpList[j].GetAlarmString();
@@ -1775,6 +1793,8 @@ namespace  AgingSystem
                     workbook.Saved = true;
                     System.Reflection.Missing miss = System.Reflection.Missing.Value;
                     workbook.SaveCopyAs(saveFileName);
+                    workbook.SaveCopyAs(saveFileNameBackup);
+                    
                 }
                 catch (Exception ex)
                 {
