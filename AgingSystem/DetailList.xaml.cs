@@ -89,9 +89,11 @@ namespace  AgingSystem
                 return;
             }
             ProductID pid = ProductID.Unknow;
-            if (Enum.IsDefined(typeof(ProductID), m_Parameter.PumpType))
+            CustomProductID cid = CustomProductID.Unknow;
+            if (Enum.IsDefined(typeof(CustomProductID), m_Parameter.PumpType))
             {
-                pid = (ProductID)Enum.Parse(typeof(ProductID), m_Parameter.PumpType);
+                cid = (CustomProductID)Enum.Parse(typeof(CustomProductID), m_Parameter.PumpType);
+                pid = ProductIDConvertor.Custom2ProductID(cid);
             }
 
            

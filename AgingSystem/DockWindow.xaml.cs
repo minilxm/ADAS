@@ -375,9 +375,10 @@ namespace  AgingSystem
             AgingParameter para = m_DockParameter[dockNo] as AgingParameter;
             if (para!=null)
             {
-                if(Enum.IsDefined(typeof(ProductID), para.PumpType))
+                if (Enum.IsDefined(typeof(CustomProductID), para.PumpType))
                 {
-                    ProductID pid = (ProductID)Enum.Parse(typeof(ProductID), para.PumpType);
+                    CustomProductID cid = (CustomProductID)Enum.Parse(typeof(CustomProductID), para.PumpType);
+                    ProductID pid = ProductIDConvertor.Custom2ProductID(cid);
                     CommandManage cmdManager = new CommandManage();
                     int iChannel = (int)dock.ChannelHashRowNo[controller.RowNo];
                     byte channel = (byte)(iChannel & 0x000000FF);

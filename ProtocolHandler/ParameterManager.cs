@@ -55,7 +55,7 @@ namespace Analyse
 
     public class AgingParameter
     {
-        private string             m_PumpType = string.Empty;
+        private string m_PumpType = string.Empty;   //此处定义的泵型号与实际的型号有差距，应该是CustomProductID对应的字符串
         private decimal            m_Rate;                      //速率可以是小数
         private decimal            m_Volume;                    
         private decimal            m_ChargeTime;                //老化充电时间可以是小数

@@ -729,10 +729,14 @@ namespace  AgingSystem
             }
             AgingParameter para = m_DockParameter[m_DockNo] as AgingParameter;
             ProductID pid = ProductID.Unknow;
+            CustomProductID cid = CustomProductID.Unknow;
             if (para != null)
             {
-                if (Enum.IsDefined(typeof(ProductID), para.PumpType))
-                    pid = (ProductID)Enum.Parse(typeof(ProductID), para.PumpType);
+                if (Enum.IsDefined(typeof(CustomProductID), para.PumpType))
+                {
+                    cid = (CustomProductID)Enum.Parse(typeof(CustomProductID), para.PumpType);
+                    pid = ProductIDConvertor.Custom2ProductID(cid);
+                }
                 else
                 {
                     Logger.Instance().ErrorFormat("OnStartClick()->para.PumpType is not defined! para.PumpType={0}", para.PumpType);
@@ -1134,136 +1138,6 @@ namespace  AgingSystem
         }
         #endregion
 
-        #region 群发送命令函数
-        private void SendSendPumpTypeCommand(CmdSendPumpType cmd)
-        {
-            AgingParameter para = m_DockParameter[m_DockNo] as AgingParameter;
-            ProductID pid = ProductID.Unknow;
-            if (para != null)
-            {
-                if (Enum.IsDefined(typeof(ProductID), para.PumpType))
-                    pid = (ProductID)Enum.Parse(typeof(ProductID), para.PumpType);
-                else
-                {
-                    Logger.Instance().ErrorFormat("SendSendPumpTypeCommand()->para.PumpType is not defined! para.PumpType={0}", para.PumpType);
-                    MessageBox.Show("泵型号出错，非法的泵类型!");
-                    return;
-                }
-            }
-            else
-            {
-                Logger.Instance().Debug("SendSendPumpTypeCommand()->AgingParameter is null");
-                MessageBox.Show("开始前先配置老化参数!");
-                return;
-            }
-            List<Controller> controller = ControllerManager.Instance().Get(m_DockNo);
-            if (controller.Count <= 0)
-            {
-                MessageBox.Show("配置文件出错，未检测到相关货架的配置文件！");
-                return;
-            }
-             //找出那些已经连接的SOCKET
-            List<Controller> ipMap = controller.FindAll((x) => { return x.SocketToken != null; });
-            if (ipMap != null && ipMap.Count > 0)
-            {
-                #region//在开始老化之前，要给每个WIFI模块发送一条指令，声明它所连接的泵型号,待这个命令有回应之后才能进行下一步操作
-                Controller currentObj = null, preObj = null;
-                m_EventSendPumpType.Set();//先设置有信号状态
-                for (int i = 0; i < ipMap.Count; i++)
-                {
-                    currentObj = ipMap[i];
-                    if (m_EventSendPumpType.WaitOne(m_TimeOut))//等待3秒，如果前一条命令没有返回就不用发了
-                    {
-                        m_CmdManager.SendPumpType(pid, (ushort)DockWindow.m_QueryInterval, currentObj.SocketToken, CommandResponse, CommandTimeoutResponse, (byte)m_HashRowNo[currentObj.RowNo]);
-                        preObj = currentObj;
-                    }
-                    else
-                    {
-                        if (preObj != null)
-                        {
-                            string msg = string.Format("{0}号货架第{1}层控制器无响应，请排除故障后重新开始！", preObj.DockNo, preObj.RowNo);
-                            Logger.Instance().Error(msg);
-                            return;
-                        }
-                    }
-                }
-                #endregion
-            }
-
-        }
-
-        private void SendCmdDischarge()
-        {
-            AgingParameter para = m_DockParameter[m_DockNo] as AgingParameter;
-            ProductID pid = ProductID.Unknow;
-            if (para != null)
-            {
-                if (Enum.IsDefined(typeof(ProductID), para.PumpType))
-                    pid = (ProductID)Enum.Parse(typeof(ProductID), para.PumpType);
-                else
-                {
-                    Logger.Instance().ErrorFormat("SendSendPumpTypeCommand()->para.PumpType is not defined! para.PumpType={0}", para.PumpType);
-                    MessageBox.Show("泵型号出错，非法的泵类型!");
-                    return;
-                }
-            }
-            else
-            {
-                Logger.Instance().Debug("SendSendPumpTypeCommand()->AgingParameter is null");
-                MessageBox.Show("开始前先配置老化参数!");
-                return;
-            }
-            List<Controller> controller = ControllerManager.Instance().Get(m_DockNo);
-            if (controller.Count <= 0)
-            {
-                MessageBox.Show("配置文件出错，未检测到相关货架的配置文件！");
-                return;
-            }
-             //找出那些已经连接的SOCKET
-            List<Controller> ipMap = controller.FindAll((x) => { return x.SocketToken != null;});
-            if (ipMap != null && ipMap.Count > 0)
-            {
-                #region//在开始老化之前，要给每个WIFI模块发送一条指令，声明它所连接的泵型号,待这个命令有回应之后才能进行下一步操作
-                Controller currentObj = null, preObj = null;
-                m_EventCmdDischarge.Set();//先设置有信号状态
-                for (int i = 0; i < ipMap.Count; i++)
-                {
-                    currentObj = ipMap[i];
-                    if (m_EventCmdDischarge.WaitOne(m_TimeOut))//等待3秒，如果前一条命令没有返回就不用发了
-                    {
-                        m_CmdManager.SendCmdDischarge(currentObj.SocketToken, CommandResponse, CommandTimeoutResponse);
-                        preObj = currentObj;
-                    }
-                    else
-                    {
-                        if (preObj != null)
-                        {
-                            string msg = string.Format("{0}号货架第{1}层控制器CmdDischarge无响应，请排除故障后重新开始！", preObj.DockNo, preObj.RowNo);
-                            Logger.Instance().Error(msg);
-                            return;
-                        }
-                    }
-                }
-                //等待最后的返回
-                if(m_EventCmdDischarge.WaitOne(m_TimeOut))
-                {
-                    Logger.Instance().Info("发送CmdDischarge命令全部收到回应！");
-                    
-                }
-                else
-                {
-                    if (preObj != null)
-                    {
-                        string msg = string.Format("{0}号货架第{1}层控制器无法响应放电命令，请排除故障后重新开始！", preObj.DockNo, preObj.RowNo);
-                        Logger.Instance().Error(msg);
-                        return;
-                    }
-                }
-                #endregion
-            }
-
-        }
-        #endregion
 
         private void EnableControls(bool bEnabled = false)
         {
@@ -1355,8 +1229,12 @@ namespace  AgingSystem
                 AgingPump info = null;
                 AgingParameter para = m_DockParameter[dockNo] as AgingParameter;
                 ProductID pid = ProductID.Unknow;
-                if (Enum.IsDefined(typeof(ProductID), para.PumpType))
-                    pid = (ProductID)Enum.Parse(typeof(ProductID), para.PumpType);
+                CustomProductID cid = CustomProductID.Unknow;
+                if (Enum.IsDefined(typeof(CustomProductID), para.PumpType))
+                {
+                    cid = (CustomProductID)Enum.Parse(typeof(CustomProductID), para.PumpType);
+                    pid = ProductIDConvertor.Custom2ProductID(cid);
+                }
                 else
                 {
                     Logger.Instance().ErrorFormat("泵类型转换出错，不支持的类型 PumpType ={0}", para.PumpType);
