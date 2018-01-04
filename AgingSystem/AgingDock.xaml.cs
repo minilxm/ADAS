@@ -1678,8 +1678,6 @@ namespace  AgingSystem
             worksheet.Cells[1, ++index] = "放电结果";
             worksheet.Cells[1, ++index] = "老化结果";
             worksheet.Cells[1, ++index] = "报警";
-            //单道：总放电时间大于4.2h，欠压报警时间＞0.5h，放电开始2h内无欠压报警；
-            //双道：总放电时间大于3.2h，欠压报警时间＞0.5h，放电开始2h内无欠压报警；            
 
             int rowIndex = 2;
             List<Controller> contorllerList = m_Controllers.OrderBy(x=>x.DockNo).ToList<Controller>();
@@ -1725,10 +1723,73 @@ namespace  AgingSystem
                                 worksheet.Cells[rowIndex, ++index] = (pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginLowVoltageTime).TotalMinutes.ToString("F1");//耗尽时长(min)=耗尽－低电
                                 bool bPass = pumpList[j].IsPass();
                                 worksheet.Cells[rowIndex, ++index] = bPass==true?"通过":"失败";
-                                //worksheet.Cells[rowIndex, ++index] = pumpList[j].GetAlarmString();
                                 //每个报警第一次发生的时间需要记录
                                 worksheet.Cells[rowIndex, ++index] = pumpList[j].GetAlarmStringAndOcurredTime();
-                                //电池老化是否合格
+                                #region//电池老化是否合格
+                                //最新放电标准
+                                //• WZ-50C6/WZ-50C6T
+                                //耗尽时间≥30min，放电至欠压报警(低电压时间)≥2H，总放电时间（放电至欠压报警时间）≥4.2H
+                                //• Graseby C6/Graseby C6T/Graseby 2000/ Graseby 2100
+                                //耗尽时间≥30min，放电至欠压报警(低电压时间)≥2H，总放电时间（放电至欠压报警时间）≥4.4H
+                                //• WZS-50F6/Graseby F6
+                                //耗尽时间≥35min，放电至欠压报警(低电压时间)≥2H，总放电时间（放电至欠压报警时间）≥3.2H
+                                //• Graseby C8
+                                //耗尽时间≥30min，放电至欠压报警(低电压时间)≥5.75H，总放电时间（放电至欠压报警时间）≥6.5H
+                                //• Graseby F8
+                                //耗尽时间≥30min，放电至欠压报警(低电压时间)≥4.75H，总放电时间（放电至欠压报警时间）≥5.5H 
+                                switch(m_CurrentCustomProductID)
+                                {
+                                    case CustomProductID.WZ50C6:
+                                    case CustomProductID.WZ50C6T:
+                                        if ((pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginDischargeTime).TotalHours >= 4.2 /*总放电时间*/
+                                        && (pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginLowVoltageTime).TotalMinutes >= 30 /*耗尽时间*/
+                                        && (pumpList[j].BeginLowVoltageTime - pumpList[j].BeginDischargeTime).TotalMinutes >= 120) /*低电压时间*/
+                                            worksheet.Cells[rowIndex, ++index] = "合格";
+                                        else
+                                            worksheet.Cells[rowIndex, ++index] = "不合格";
+                                        break;
+                                    case CustomProductID.GrasebyC6:
+                                    case CustomProductID.GrasebyC6T:
+                                    case CustomProductID.Graseby2000:
+                                    case CustomProductID.Graseby2100:
+                                        if ((pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginDischargeTime).TotalHours >= 4.4 /*总放电时间*/
+                                        && (pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginLowVoltageTime).TotalMinutes >= 30 /*耗尽时间*/
+                                        && (pumpList[j].BeginLowVoltageTime - pumpList[j].BeginDischargeTime).TotalMinutes >= 120) /*低电压时间*/
+                                            worksheet.Cells[rowIndex, ++index] = "合格";
+                                        else
+                                            worksheet.Cells[rowIndex, ++index] = "不合格";
+                                        break;
+                                    case CustomProductID.WZS50F6_Double:
+                                    case CustomProductID.WZS50F6_Single:
+                                    case CustomProductID.GrasebyF6_Double:
+                                    case CustomProductID.GrasebyF6_Single:
+                                       if ((pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginDischargeTime).TotalHours >= 3.2 /*总放电时间*/
+                                        && (pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginLowVoltageTime).TotalMinutes >= 35 /*耗尽时间*/
+                                        && (pumpList[j].BeginLowVoltageTime - pumpList[j].BeginDischargeTime).TotalMinutes >= 120) /*低电压时间*/
+                                            worksheet.Cells[rowIndex, ++index] = "合格";
+                                        else
+                                            worksheet.Cells[rowIndex, ++index] = "不合格";
+                                        break;
+                                    case CustomProductID.GrasebyC8:
+                                        if ((pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginDischargeTime).TotalHours >= 6.5 /*总放电时间*/
+                                        && (pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginLowVoltageTime).TotalMinutes >= 30 /*耗尽时间*/
+                                        && (pumpList[j].BeginLowVoltageTime - pumpList[j].BeginDischargeTime).TotalMinutes >= 345) /*低电压时间*/
+                                            worksheet.Cells[rowIndex, ++index] = "合格";
+                                        else
+                                            worksheet.Cells[rowIndex, ++index] = "不合格";
+                                        break;
+                                    case CustomProductID.GrasebyF8:
+                                        if ((pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginDischargeTime).TotalHours >= 5.5 /*总放电时间*/
+                                        && (pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginLowVoltageTime).TotalMinutes >= 30 /*耗尽时间*/
+                                        && (pumpList[j].BeginLowVoltageTime - pumpList[j].BeginDischargeTime).TotalMinutes >= 285) /*低电压时间*/
+                                            worksheet.Cells[rowIndex, ++index] = "合格";
+                                        else
+                                            worksheet.Cells[rowIndex, ++index] = "不合格";
+                                        break;
+                                    default:
+                                        break;
+                                }
+                                #endregion
                                 if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double 
                                     || m_CurrentCustomProductID == CustomProductID.WZS50F6_Double
                                     || m_CurrentCustomProductID == CustomProductID.GrasebyF8
