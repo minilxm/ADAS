@@ -1722,9 +1722,7 @@ namespace  AgingSystem
                                 worksheet.Cells[rowIndex, ++index] = (pumpList[j].BeginLowVoltageTime - pumpList[j].BeginDischargeTime).TotalMinutes.ToString("F1");//低电时长(min)=放电开始至电池低电压的时长
                                 worksheet.Cells[rowIndex, ++index] = (pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginLowVoltageTime).TotalMinutes.ToString("F1");//耗尽时长(min)=耗尽－低电
                                 bool bPass = pumpList[j].IsPass();
-                                worksheet.Cells[rowIndex, ++index] = bPass==true?"通过":"失败";
-                                //每个报警第一次发生的时间需要记录
-                                worksheet.Cells[rowIndex, ++index] = pumpList[j].GetAlarmStringAndOcurredTime();
+                               
                                 #region//电池老化是否合格
                                 //最新放电标准
                                 //• WZ-50C6/WZ-50C6T
@@ -1790,35 +1788,10 @@ namespace  AgingSystem
                                         break;
                                 }
                                 #endregion
-                                if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double 
-                                    || m_CurrentCustomProductID == CustomProductID.WZS50F6_Double
-                                    || m_CurrentCustomProductID == CustomProductID.GrasebyF8
-                                    )
-                                {
-                                    if((pumpList[j].BeginBattaryDepleteTime-pumpList[j].BeginDischargeTime).TotalHours> 3.2 
-                                        && (pumpList[j].BeginBattaryDepleteTime-pumpList[j].BeginLowVoltageTime).TotalMinutes>30
-                                        && (pumpList[j].BeginLowVoltageTime-pumpList[j].BeginDischargeTime).TotalMinutes>120)
-                                    {
-                                        worksheet.Cells[rowIndex, ++index] = "合格";
-                                    }
-                                    else
-                                    {
-                                        worksheet.Cells[rowIndex, ++index] = "不合格";
-                                    }
-                                }
-                                else
-                                {
-                                    if ((pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginDischargeTime).TotalHours > 4.2
-                                       && (pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginLowVoltageTime).TotalMinutes > 30
-                                       && (pumpList[j].BeginLowVoltageTime - pumpList[j].BeginDischargeTime).TotalMinutes > 120)
-                                    {
-                                        worksheet.Cells[rowIndex, ++index] = "合格";
-                                    }
-                                    else
-                                    {
-                                        worksheet.Cells[rowIndex, ++index] = "不合格";
-                                    }
-                                }
+                                worksheet.Cells[rowIndex, ++index] = bPass == true ? "通过" : "失败";
+                                //每个报警第一次发生的时间需要记录
+                                worksheet.Cells[rowIndex, ++index] = pumpList[j].GetAlarmStringAndOcurredTime();
+
 
                                 Excel.Range titleRange = worksheet.Range[worksheet.Cells[rowIndex, 1], worksheet.Cells[rowIndex, index]];//选取一行   
                                 if (bPass)
