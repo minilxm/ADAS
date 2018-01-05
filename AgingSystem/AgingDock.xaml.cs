@@ -47,7 +47,7 @@ namespace  AgingSystem
         private System.Timers.Timer   m_ChargeTimer        = new System.Timers.Timer();                  //充电时钟
         private System.Timers.Timer   m_RechargeTimer      = new System.Timers.Timer();                  //放电电时钟
         private Hashtable             m_DockParameter      = new Hashtable();                            //存放每个货架的配置信息（int 货架号，AgingParameter）
-        private Hashtable             m_HashPumps          = new Hashtable();                            //单个货架上的选中的泵位置信息列表<DockNO, List<Tuple<int,int,int>>(int pumpLocation,int rowNo,int colNo )
+        private Hashtable             m_HashPumps          = new Hashtable();                            //单个货架上的选中的泵位置信息列表<DockNO, List<Tuple<int,int,int,string>>(int pumpLocation,int rowNo,int colNo,serialNo )
         private Hashtable             m_HashRowNo          = new Hashtable();                            //单个货架上的选中的泵通道编号，即一个控制器有命令中的通道编号（int 行号,int 通道号位计算）
         private CommandManage         m_CmdManager         = new CommandManage();                        //发送命令对象，通过它来发送所有命令
         private AutoResetEvent        m_EventSendPumpType  = new AutoResetEvent(false);                  //发送CmdSendPumpType命令事件
@@ -527,11 +527,11 @@ namespace  AgingSystem
                                 completeCount++;
                             if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double || m_CurrentCustomProductID == CustomProductID.WZS50F6_Double)
                             {
-                                this.Dispatcher.BeginInvoke(new DeleUpdateCompleteCount(UpdateCompleteCount), new object[] { completeCount, ((List<Tuple<int, int, int>>)m_HashPumps[m_DockNo]).Count / 2 });
+                                this.Dispatcher.BeginInvoke(new DeleUpdateCompleteCount(UpdateCompleteCount), new object[] { completeCount, ((List<Tuple<int, int, int, string>>)m_HashPumps[m_DockNo]).Count / 2 });
                             }
                             else
                             {
-                                this.Dispatcher.BeginInvoke(new DeleUpdateCompleteCount(UpdateCompleteCount), new object[] { completeCount, ((List<Tuple<int, int, int>>)m_HashPumps[m_DockNo]).Count });
+                                this.Dispatcher.BeginInvoke(new DeleUpdateCompleteCount(UpdateCompleteCount), new object[] { completeCount, ((List<Tuple<int, int, int, string>>)m_HashPumps[m_DockNo]).Count });
                             }
                         }
                     }
@@ -756,7 +756,7 @@ namespace  AgingSystem
                 //MessageBox.Show("配置文件出错，未检测到相关货架的配置文件！");
                 return false;
             }
-            List<Tuple<int, int, int>> selectedPumps = m_HashPumps[m_DockNo] as List<Tuple<int, int, int>>;
+            List<Tuple<int, int, int, string>> selectedPumps = m_HashPumps[m_DockNo] as List<Tuple<int, int, int, string>>;
             if (selectedPumps == null || selectedPumps.Count <= 0)
             {
                 //MessageBox.Show("请选择需要老化的泵！");
@@ -847,7 +847,7 @@ namespace  AgingSystem
                 MessageBox.Show("配置文件出错，未检测到相关货架的配置文件！");
                 return;
             }
-            List<Tuple<int, int, int>> selectedPumps = m_HashPumps[m_DockNo] as List<Tuple<int, int, int>>;
+            List<Tuple<int, int, int, string>> selectedPumps = m_HashPumps[m_DockNo] as List<Tuple<int, int, int, string>>;
             if (selectedPumps == null || selectedPumps.Count <= 0)
             {
                 MessageBox.Show("请选择需要老化的泵！");
@@ -1094,13 +1094,13 @@ namespace  AgingSystem
                     string strCompleteTemp = string.Empty;
                     if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double) //双道F6与单道F6要分开处理
                     {
-                        strTemp = string.Format("泵数量:{0}/{1}", ((List<Tuple<int, int, int>>)m_HashPumps[dockNo]).Count / 2, DockInfoManager.Instance().Get(dockNo) / 2);
-                        strCompleteTemp = string.Format("完成数量:{0}/{1}", 0, ((List<Tuple<int, int, int>>)m_HashPumps[dockNo]).Count/2);
+                        strTemp = string.Format("泵数量:{0}/{1}", ((List<Tuple<int, int, int,string>>)m_HashPumps[dockNo]).Count / 2, DockInfoManager.Instance().Get(dockNo) / 2);
+                        strCompleteTemp = string.Format("完成数量:{0}/{1}", 0, ((List<Tuple<int, int, int, string>>)m_HashPumps[dockNo]).Count / 2);
                     }
                     else
                     {
-                        strTemp = string.Format("泵数量:{0}/{1}", ((List<Tuple<int, int, int>>)m_HashPumps[dockNo]).Count, DockInfoManager.Instance().Get(dockNo));
-                        strCompleteTemp = string.Format("完成数量:{0}/{1}", 0, ((List<Tuple<int, int, int>>)m_HashPumps[dockNo]).Count);
+                        strTemp = string.Format("泵数量:{0}/{1}", ((List<Tuple<int, int, int, string>>)m_HashPumps[dockNo]).Count, DockInfoManager.Instance().Get(dockNo));
+                        strCompleteTemp = string.Format("完成数量:{0}/{1}", 0, ((List<Tuple<int, int, int, string>>)m_HashPumps[dockNo]).Count);
                     }
                     lbPumpCount.Content = strTemp;
                     lbCompleteCount.Content = strCompleteTemp;
@@ -1116,7 +1116,7 @@ namespace  AgingSystem
         {
             if(m_DockParameter[m_DockNo]==null || m_HashPumps[m_DockNo]==null)
                 return;
-            if(((List<Tuple<int,int,int>>)m_HashPumps[m_DockNo]).Count==0)
+            if(((List<Tuple<int,int,int,string>>)m_HashPumps[m_DockNo]).Count==0)
                 return;
             int dockNo = 0;
             if (Int32.TryParse(Tag.ToString(), out dockNo))
@@ -1126,7 +1126,7 @@ namespace  AgingSystem
                 {
                     agingPumps.AddRange(m_Controllers[i].AgingPumpList);
                 }
-                DetailList detailList = new  DetailList(m_DockNo, (AgingParameter)m_DockParameter[m_DockNo], (List<Tuple<int,int,int>>)m_HashPumps[m_DockNo], agingPumps);
+                DetailList detailList = new DetailList(m_DockNo, (AgingParameter)m_DockParameter[m_DockNo], (List<Tuple<int, int, int, string>>)m_HashPumps[m_DockNo], agingPumps);
                 detailList.ShowDialog();
                 detailList = null;
                 GC.Collect();
@@ -1589,7 +1589,7 @@ namespace  AgingSystem
         /// <returns></returns>
         private void GenChannel()
         {
-            List<Tuple<int,int,int>> pumpLocationList = m_HashPumps[m_DockNo] as List<Tuple<int,int,int>>;
+            List<Tuple<int, int, int, string>> pumpLocationList = m_HashPumps[m_DockNo] as List<Tuple<int, int, int, string>>;
             if(pumpLocationList==null)
             {
                 Logger.Instance().ErrorFormat("配置信息错误，相应的货架编号没有选择相应的泵,DockNo={0}",m_DockNo);
@@ -1646,7 +1646,9 @@ namespace  AgingSystem
             if (String.IsNullOrEmpty(saveFileNameBackup.Trim()))
                 return; //No name
 
-         
+            //选中的泵列表
+            List<Tuple<int, int, int, string>> selectedPumps = m_HashPumps[m_DockNo] as List<Tuple<int, int, int, string>>;
+            //老化参数
             AgingParameter parameter = m_DockParameter[m_DockNo] as AgingParameter;
             int columns = DockInfoManager.Instance().Get(m_DockNo)/5;
             Excel.Application xlApp = new Excel.Application();
@@ -1702,7 +1704,18 @@ namespace  AgingSystem
                             else
                                 worksheet.Cells[rowIndex, ++index] = string.Format("{0}—{1}—{2}", m_DockNo, pumpList[j].RowNo, pumpList[j].Channel);
                             worksheet.Cells[rowIndex, ++index] = pumpList[j].PumpType;//型号
-                            worksheet.Cells[rowIndex, ++index] = "";//机器编号
+                            //根据机器的行号和列号寻找泵的位置信息
+                            if (selectedPumps != null)
+                            {
+                                Tuple<int, int, int, string> location = selectedPumps.Find((x) => { return x.Item2 == pumpList[j].RowNo && x.Item3 == pumpList[j].Channel; });
+                                if (location != null)
+                                    worksheet.Cells[rowIndex, ++index] = location.Item4;//机器编号
+                                else
+                                    worksheet.Cells[rowIndex, ++index] = "";//机器编号
+                            }
+                            else
+                                worksheet.Cells[rowIndex, ++index] = "";//机器编号
+
                             if(parameter!=null)
                                 worksheet.Cells[rowIndex, ++index] = parameter.Rate.ToString();//速率
                             if(pumpList[j].BeginAgingTime.Year>2000

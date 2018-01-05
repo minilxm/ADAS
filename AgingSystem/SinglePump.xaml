@@ -16,6 +16,6 @@
         </Grid.RowDefinitions>
         <CheckBox Name="chNo"  Grid.Row="0" Grid.Column="0" Margin="5,1,1,1" Padding="5,0,0,0" HorizontalAlignment="Left"  VerticalAlignment="Center" FontSize="12" Click="OnCheckBoxClick" >1-1</CheckBox>
         <Label Name="lbPumpType"      Grid.Row="0" Grid.Column="1" Margin="1" Padding="1" HorizontalAlignment="Left"  VerticalAlignment="Center" FontSize="12">GrasebyC6</Label>
-        <Label Name="lbSerialNo"    Grid.Row="0" Grid.Column="2" Margin="1" Padding="1" HorizontalAlignment="Left"  VerticalAlignment="Center" FontSize="12">N/A</Label>
+        <TextBox Name="tbSerialNo"  Grid.Row="0" Grid.Column="2" Margin="1" Padding="1" FontSize="12" VerticalAlignment="Center" HorizontalAlignment="Left" Width="100"/>
     </Grid>
 </UserControl>

@@ -142,11 +142,14 @@ namespace  AgingSystem
             }
         }
 
+        /// <summary>
+        /// 哪些泵已经选中
+        /// </summary>
         private void InitSelectedPumps()
         {
             if (DockWindow.m_DockPumpList.ContainsKey(m_DockNo))
             {
-                List<Tuple<int,int,int>> pumpLocation = DockWindow.m_DockPumpList[m_DockNo] as List<Tuple<int,int,int>>;
+                List<Tuple<int, int, int, string>> pumpLocation = DockWindow.m_DockPumpList[m_DockNo] as List<Tuple<int, int, int, string>>;
                
                 SinglePump pump = null;
                 for (int i = 0; i < pumplistGrid.Children.Count; i++)
@@ -154,10 +157,16 @@ namespace  AgingSystem
                     if (pumplistGrid.Children[i] is SinglePump)
                     {
                         pump = pumplistGrid.Children[i] as SinglePump;
-                        if (pump.Tag!=null && pumpLocation.FindIndex((x)=>{return x.Item1==(int)pump.Tag;})>=0)
+                        if (pump.Tag != null)
                         {
-                            pump.chNo.IsChecked = true;
+                            Tuple<int, int, int, string> location = pumpLocation.Find((x) => { return x.Item1 == (int)pump.Tag;});
+                            if (location != null)
+                            {
+                                pump.chNo.IsChecked = true;
+                                pump.SerialNo = location.Item4;
+                            }
                         }
+
                     }
                 }
              
@@ -250,7 +259,6 @@ namespace  AgingSystem
                 Grid.SetColumn(pump, i % 2);
                 pump.Background = new SolidColorBrush(m_PumpBackgroundColor[i / pumpCountPerRow]);
             }
-
         }
 
         private void OnSinglePumpClickCheckBox(object sender, SinglePumpArgs e)
@@ -309,11 +317,8 @@ namespace  AgingSystem
                 if(bRet==true)
                 {
                     int index = -1;
-                    //ComboBoxItem item = null;
                     for(int i = 0;i<cmPumpType.Items.Count;i++)
                     {
-                        //item = cmPumpType.Items[i]// as ComboBoxItem;
-                        //cmPumpType.Items[9]
                         if (string.Compare(cmPumpType.Items[i].ToString(), parameterList.Args.m_PumpType, true) == 0)
                         {
                             index = i;
@@ -339,7 +344,6 @@ namespace  AgingSystem
                     tbRate.Text = parameterList.Args.m_Rate;
                     tbVolume.Text = parameterList.Args.m_Volume;
                     tbCharge.Text = parameterList.Args.m_ChargeTime;
-                    //tbDischarge.Text = parameterList.Args.m_DischargeTime;
                     tbRecharge.Text = parameterList.Args.m_RechargeTime;
                 }
                 else
@@ -420,14 +424,14 @@ namespace  AgingSystem
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             SinglePump pump = null;
-            List<Tuple<int,int,int>> pumpLocationList = new List<Tuple<int,int,int>>();
+            List<Tuple<int, int, int, string>> pumpLocationList = new List<Tuple<int, int, int, string>>();
             for (int i = 0; i < pumplistGrid.Children.Count; i++)
             {
                 if (pumplistGrid.Children[i] is SinglePump)
                 {
                     pump = pumplistGrid.Children[i] as SinglePump;
                     if (pump.chNo.IsChecked.HasValue && pump.chNo.IsChecked==true)
-                        pumpLocationList.Add(new Tuple<int,int,int>((int)pump.Tag, pump.RowNo, pump.ColNo));
+                        pumpLocationList.Add(new Tuple<int, int, int, string>((int)pump.Tag, pump.RowNo, pump.ColNo, pump.SerialNo));
                 }
             }
             Hashtable hashPumps = new Hashtable();
@@ -490,7 +494,7 @@ namespace  AgingSystem
                         pump.EnableCheckBoxClick = false;
                         pump.lbPumpType.Content = strPumpType;
                     }
-                    pump.lbSerialNo.Content = "1234567890";
+                    //pump.tbSerialNo.Text = "1234567890";
                 }
             }
         }

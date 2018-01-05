@@ -33,7 +33,7 @@ namespace  AgingSystem
         private int                 m_DockCount        = 0;
         public static int           m_QueryInterval    = 0;
         public static Hashtable     m_DockParameter    = new Hashtable();         //存放每个货架的配置信息（int 货架号，DefaultParameter）
-        public static Hashtable     m_DockPumpList     = new Hashtable();         //存放每个货架泵信息（int 货架号，List<Tuple<int,int,int>>分别是位置，行号，列号）
+        public static Hashtable     m_DockPumpList = new Hashtable();         //存放每个货架泵信息（int 货架号，List<Tuple<int,int,int,string>>分别是位置，行号，列号）
         private List<AgingDock>     m_DockList         = new List<AgingDock>();   //泵架列表
         private List<Color> ColorSet                   = new List<Color>();
         private DispatcherTimer     m_ShowCurrentTimer = new DispatcherTimer();   //显示当前时间 

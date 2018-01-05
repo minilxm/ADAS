@@ -31,7 +31,7 @@ namespace  AgingSystem
     {
         private int                      m_DockNo;
         private AgingParameter           m_Parameter;
-        private List<Tuple<int,int,int>> m_PumpLocationList;//int pumpLocation,int rowNo,int colNo 
+        private List<Tuple<int, int, int, string>> m_PumpLocationList;//int pumpLocation,int rowNo,int colNo 
         private List<AgingPump>          m_AgingPumpList;
 
         public DetailList()
@@ -46,7 +46,7 @@ namespace  AgingSystem
         /// <param name="parameter"></param>
         /// <param name="pumpLocationList"></param>
         /// <param name="AgingPumpList"></param>
-        public DetailList(int dockNo,AgingParameter parameter, List<Tuple<int,int,int>> pumpLocationList, List<AgingPump> AgingPumpList)
+        public DetailList(int dockNo, AgingParameter parameter, List<Tuple<int, int, int, string>> pumpLocationList, List<AgingPump> AgingPumpList)
         {
             InitializeComponent();
             m_DockNo = dockNo;

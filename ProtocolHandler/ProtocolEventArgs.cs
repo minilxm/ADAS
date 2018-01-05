@@ -129,7 +129,7 @@ namespace Analyse
     /// </summary>
     public class SelectedPumpsArgs : EventArgs
     {
-        private Hashtable m_SelectedPumps = new Hashtable();    //存放每个货架的泵位置信息（int 货架号，List<Tuple<int,int,int>>(int pumpLocation,int rowNo,int colNo）)
+        private Hashtable m_SelectedPumps = new Hashtable();    //存放每个货架的泵位置信息（int 货架号，List<Tuple<int,int,int,string>>(int pumpLocation,int rowNo,int colNo,serialNo）)
         public Hashtable SelectedPumps
         {
             get { return m_SelectedPumps; }
@@ -187,11 +187,21 @@ namespace Analyse
 
     public class SinglePumpArgs : EventArgs
     {
-        private int  m_DockNO             = 0;            //货架编号
-        private int  m_PumpLocation       = 0;            //泵位置
-        private int  m_RowNo              = 0;            //从1开始
-        private int  m_ColNo               = 0;            //从1 开始
-        private bool m_EnableCheckBoxClick = false; //是否允许点击事件，当双道泵时，选择第一道泵时，第二道泵默认勾上
+        private int  m_DockNO             = 0;           //货架编号
+        private int  m_PumpLocation       = 0;           //泵位置
+        private int  m_RowNo              = 0;           //从1开始
+        private int  m_ColNo               = 0;          //从1 开始
+        private bool m_EnableCheckBoxClick = false;      //是否允许点击事件，当双道泵时，选择第一道泵时，第二道泵默认勾上
+        private string m_SerialNo = string.Empty;        //泵的序列号，通过条码枪获得
+
+        /// <summary>
+        /// 泵的序列号
+        /// </summary>
+        public string SerialNo
+        {
+            get { return m_SerialNo; }
+            set { m_SerialNo = value; }
+        }
 
         /// <summary>
         /// 货架编号
@@ -247,13 +257,15 @@ namespace Analyse
                                 int pumpLocation,
                                 int rowNo,
                                 int colNo,
-                                bool enableCheckBoxClick)
+                                bool enableCheckBoxClick,
+                                string serialNo = "")
         {
             m_DockNO = dockNO;
             m_PumpLocation = pumpLocation;
             m_RowNo = rowNo;
             m_ColNo = colNo;
             m_EnableCheckBoxClick = enableCheckBoxClick;
+            m_SerialNo = serialNo;
         }
     }
 
