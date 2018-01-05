@@ -490,6 +490,7 @@ namespace  AgingSystem
                         pump.EnableCheckBoxClick = false;
                         pump.lbPumpType.Content = strPumpType;
                     }
+                    pump.lbSerialNo.Content = "1234567890";
                 }
             }
         }
