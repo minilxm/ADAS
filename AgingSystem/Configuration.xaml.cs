@@ -28,6 +28,7 @@ namespace  AgingSystem
         private int m_DockCount = 0;
         private int m_DockNo = 0;       //货架编号从1开始增加
         private List<Color> m_PumpBackgroundColor = new List<Color>();
+        private List<int> m_CheckedPumpLocationList = new  List<int>();//选中的泵的位置编号，在光标跳到下一序列号框中，方便查找
         
         public Configuration()
         {
@@ -147,6 +148,8 @@ namespace  AgingSystem
         /// </summary>
         private void InitSelectedPumps()
         {
+            //进入此界面时需要将m_CheckedPumpLocationList清空
+            m_CheckedPumpLocationList.Clear();
             if (DockWindow.m_DockPumpList.ContainsKey(m_DockNo))
             {
                 List<Tuple<int, int, int, string>> pumpLocation = DockWindow.m_DockPumpList[m_DockNo] as List<Tuple<int, int, int, string>>;
@@ -164,6 +167,8 @@ namespace  AgingSystem
                             {
                                 pump.chNo.IsChecked = true;
                                 pump.SerialNo = location.Item4;
+                                if (!m_CheckedPumpLocationList.Contains(pump.PumpLocation))
+                                    m_CheckedPumpLocationList.Add(pump.PumpLocation);
                             }
                         }
 
@@ -252,6 +257,7 @@ namespace  AgingSystem
                 pump.Cursor = Cursors.Hand;
                 pump.SetPump(i + 1, "", "");
                 pump.OnClickCheckBox += OnSinglePumpClickCheckBox;
+                pump.OnSerialNoTypeIn += OnSerialNoInputComplete;
                 pumplistGrid.Children.Add(pump);
                 Grid.SetRow(pump, rowIndex);
                 if (i % 2 == 1)
@@ -261,30 +267,85 @@ namespace  AgingSystem
             }
         }
 
+        /// <summary>
+        /// 双道F6 WZ50F6都不用点击第二道，当点击第一道时，第二道自动勾选
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void OnSinglePumpClickCheckBox(object sender, SinglePumpArgs e)
         {
             SinglePump self = sender as SinglePump;
             SinglePump pump = null;
-            if(e!=null)
+            if (e != null)
             {
-                if(e.PumpLocation%2==0 && e.PumpLocation>0)
+                //如果是双道泵
+                if (e.EnableCheckBoxClick)
                 {
-                    pump = FindPumpByLocation(e.PumpLocation - 1);
-                    if(pump!=null)
+                    //点击奇数位泵偶数位也要相应点击,反之亦然
+                    if (e.PumpLocation % 2 == 0 && e.PumpLocation > 0)
                     {
-                        pump.chNo.IsChecked = self.chNo.IsChecked;
+                        pump = FindPumpByLocation(e.PumpLocation - 1);
+                        if (pump != null)
+                        {
+                            pump.chNo.IsChecked = self.chNo.IsChecked;
+                        }
+                    }
+                    else if (e.PumpLocation % 2 == 1)
+                    {
+                        pump = FindPumpByLocation(e.PumpLocation + 1);
+                        if (pump != null)
+                        {
+                            pump.chNo.IsChecked = self.chNo.IsChecked;
+                        }
+                    }
+
+                    if (pump != null && pump.chNo.IsChecked == true)
+                    {
+                        if (!m_CheckedPumpLocationList.Contains(pump.PumpLocation))
+                            m_CheckedPumpLocationList.Add(pump.PumpLocation);
+                    }
+                    else
+                    {
+                        if (m_CheckedPumpLocationList.Contains(pump.PumpLocation))
+                            m_CheckedPumpLocationList.Remove(pump.PumpLocation);
                     }
                 }
-                else if(e.PumpLocation%2==1)
+
+                if (self.chNo.IsChecked == true)
                 {
-                    pump = FindPumpByLocation(e.PumpLocation + 1);
-                    if (pump != null)
-                    {
-                        pump.chNo.IsChecked = self.chNo.IsChecked;
-                    }
+                    if (!m_CheckedPumpLocationList.Contains(e.PumpLocation))
+                        m_CheckedPumpLocationList.Add(e.PumpLocation);
+                }
+                else
+                {
+                    if (m_CheckedPumpLocationList.Contains(e.PumpLocation))
+                        m_CheckedPumpLocationList.Remove(e.PumpLocation);
+                }
+                m_CheckedPumpLocationList.Sort();//默认是从小到大排序
+            }
+        }
+
+        /// <summary>
+        /// 当条码枪完成一次扫码，光标自动跳到下一条
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void OnSerialNoInputComplete(object sender, SerialNoInputArgs e)
+        {
+            if (m_CheckedPumpLocationList.Count <= 0)
+                return;
+            int index = m_CheckedPumpLocationList.FindIndex((x) => { return e.PumpLocation == x; });
+            if (index >= 0 && index+1<m_CheckedPumpLocationList.Count)
+            {
+                SinglePump pump = FindPumpByLocation(m_CheckedPumpLocationList[index + 1]);
+                if(pump!=null)
+                {
+                    pump.SetCursor();
                 }
             }
         }
+        
+
 
         /// <summary>
         /// 每个泵都有一个编号，从1开始,按照位置一定能找到
@@ -453,10 +514,12 @@ namespace  AgingSystem
             SinglePump pump = null;
             for(int i=0;i<pumplistGrid.Children.Count; i++)
             {
-                if(pumplistGrid.Children[i] is SinglePump)
+                if (pumplistGrid.Children[i] is SinglePump)
                 {
                     pump = pumplistGrid.Children[i] as SinglePump;
                     pump.chNo.IsChecked = this.chNo.IsChecked;
+                    if (!m_CheckedPumpLocationList.Contains(pump.PumpLocation))
+                        m_CheckedPumpLocationList.Add(pump.PumpLocation);
                 }
             }
         }
@@ -494,7 +557,6 @@ namespace  AgingSystem
                         pump.EnableCheckBoxClick = false;
                         pump.lbPumpType.Content = strPumpType;
                     }
-                    //pump.tbSerialNo.Text = "1234567890";
                 }
             }
         }

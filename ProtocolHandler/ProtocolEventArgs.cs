@@ -269,5 +269,25 @@ namespace Analyse
         }
     }
 
+    /// <summary>
+    /// 完成序列号的输入事件
+    /// </summary>
+    public class SerialNoInputArgs : EventArgs
+    {
+        private int m_PumpLocation = 0;           //泵位置
 
+        /// <summary>
+        /// 泵位置
+        /// </summary>
+        public int PumpLocation
+        {
+            get { return m_PumpLocation; }
+            set { m_PumpLocation = value; }
+        }
+
+        public SerialNoInputArgs( int pumpLocation)
+        {
+            m_PumpLocation = pumpLocation;
+        }
+    }
 }

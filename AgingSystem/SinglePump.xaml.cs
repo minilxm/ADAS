@@ -21,6 +21,7 @@ namespace  AgingSystem
     public partial class SinglePump : UserControl
     {
         public event EventHandler<SinglePumpArgs> OnClickCheckBox;
+        public event EventHandler<SerialNoInputArgs> OnSerialNoTypeIn;
 
         private int    m_DockNO                   = 0;            //货架编号
         private int    m_PumpLocation             = 0;            //泵位置
@@ -136,13 +137,32 @@ namespace  AgingSystem
         /// <param name="e"></param>
         private void OnCheckBoxClick(object sender, RoutedEventArgs e)
         {
-            if(m_EnableCheckBoxClick)
+            //m_EnableCheckBoxClick为true时表示双道泵第二道自动勾选
+            if (OnClickCheckBox != null)
             {
-                if(OnClickCheckBox!=null)
+                OnClickCheckBox(this, new SinglePumpArgs(m_DockNO, m_PumpLocation, m_RowNo, m_ColNo, m_EnableCheckBoxClick, tbSerialNo.Text));
+            }
+        }
+
+        private void OnSerialNoKeyUp(object sender, KeyEventArgs e)
+        {
+            e.Handled = false;
+            if (tbSerialNo.Text.Length>=11)
+            {
+                if (OnSerialNoTypeIn!=null)
                 {
-                    OnClickCheckBox(this, new SinglePumpArgs(m_DockNO, m_PumpLocation, m_RowNo, m_ColNo, m_EnableCheckBoxClick, tbSerialNo.Text));
+                    OnSerialNoTypeIn(this, new SerialNoInputArgs(m_PumpLocation));
                 }
             }
+
+        }
+
+        /// <summary>
+        /// 设置光标位置
+        /// </summary>
+        public void SetCursor()
+        {
+            tbSerialNo.Focus();
         }
 
     }

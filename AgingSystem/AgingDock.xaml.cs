@@ -1631,7 +1631,7 @@ namespace  AgingSystem
                 return; 
             //生成一份做备份
             string excelDirBackup = "老化结果备份\\";
-            string saveFileNameBackup = saveFileName;
+            string saveFileNameBackup = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetAssembly(typeof(DockWindow)).Location);
             string dirNameBackup = saveFileNameBackup + "\\" + excelDirBackup + DateTime.Now.ToString("yyyy-MM-dd");
             string dockNameBackup = dirNameBackup + "\\" + this.m_DockNo.ToString() + "号货架";
             if (!Directory.Exists(dirNameBackup))
@@ -1836,7 +1836,7 @@ namespace  AgingSystem
                                 worksheet.Cells[rowIndex, ++index] = bPass && isBatteryOK == true ? "通过" : "失败";                                                       //老化结果:电池不合格也不能通过
                                 worksheet.Cells[rowIndex, ++index] = pumpList[j].GetAlarmStringAndOcurredTime();                                                          //报警:带记录第一次发生时间
                                 Excel.Range titleRange = worksheet.Range[worksheet.Cells[rowIndex, 1], worksheet.Cells[rowIndex, index]];//选取一行   
-                                if (bPass)
+                                if (bPass && isBatteryOK)
                                     titleRange.Interior.ColorIndex = 35;//设置绿颜色
                                 else
                                     titleRange.Interior.ColorIndex = 3;//设置红颜色
@@ -1874,6 +1874,7 @@ namespace  AgingSystem
                     workbook.Saved = true;
                     System.Reflection.Missing miss = System.Reflection.Missing.Value;
                     workbook.SaveCopyAs(saveFileName);
+                    Thread.Sleep(1000);
                     workbook.SaveCopyAs(saveFileNameBackup);//保存另一份到备份文件夹中
                 }
                 catch (Exception ex)
