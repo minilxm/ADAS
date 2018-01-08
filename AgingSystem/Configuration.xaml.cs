@@ -334,18 +334,70 @@ namespace  AgingSystem
         {
             if (m_CheckedPumpLocationList.Count <= 0)
                 return;
+            if (cmPumpType.SelectedIndex < 0)
+                return;
+            string strPumpType = cmPumpType.Items[cmPumpType.SelectedIndex].ToString();
+            CustomProductID cid = ProductIDConvertor.Name2CustomProductID(strPumpType);
             int index = m_CheckedPumpLocationList.FindIndex((x) => { return e.PumpLocation == x; });
-            if (index >= 0 && index+1<m_CheckedPumpLocationList.Count)
+            if (index >= 0 && index + 1 < m_CheckedPumpLocationList.Count)
             {
-                SinglePump pump = FindPumpByLocation(m_CheckedPumpLocationList[index + 1]);
-                if(pump!=null)
+                if (cid == CustomProductID.GrasebyF6_Double || cid == CustomProductID.WZS50F6_Double)
                 {
-                    pump.SetCursor();
+                    #region
+                    SinglePump pump = null;
+                    //第一道泵序列号与第二道 一样
+                    if (index % 2 == 0)
+                    {
+                        if (m_CheckedPumpLocationList.Count > index + 1)
+                        {
+                            pump = FindPumpByLocation(m_CheckedPumpLocationList[index + 1]);
+                            if (pump != null)
+                            {
+                                pump.SetSerialNo(e.SerialNo);
+                            }
+                        }
+                        if (m_CheckedPumpLocationList.Count > index + 2)
+                        {
+                            //光标跳到下一个泵
+                            pump = FindPumpByLocation(m_CheckedPumpLocationList[index + 2]);
+                            if (pump != null)
+                            {
+                                pump.SetCursor();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (m_CheckedPumpLocationList.Count > index - 1)
+                        {
+                            pump = FindPumpByLocation(m_CheckedPumpLocationList[index - 1]);
+                            if (pump != null)
+                            {
+                                pump.SetSerialNo(e.SerialNo);
+                            }
+                        }
+                        //光标跳到下一个泵
+                        if (m_CheckedPumpLocationList.Count > index + 1)
+                        {
+                            pump = FindPumpByLocation(m_CheckedPumpLocationList[index + 1]);
+                            if (pump != null)
+                            {
+                                pump.SetCursor();
+                            }
+                        }
+                    }
+                    #endregion
+                }
+                else
+                {
+                    SinglePump pump = FindPumpByLocation(m_CheckedPumpLocationList[index + 1]);
+                    if (pump != null)
+                    {
+                        pump.SetCursor();
+                    }
                 }
             }
         }
-        
-
 
         /// <summary>
         /// 每个泵都有一个编号，从1开始,按照位置一定能找到
@@ -518,12 +570,25 @@ namespace  AgingSystem
                 {
                     pump = pumplistGrid.Children[i] as SinglePump;
                     pump.chNo.IsChecked = this.chNo.IsChecked;
-                    if (!m_CheckedPumpLocationList.Contains(pump.PumpLocation))
-                        m_CheckedPumpLocationList.Add(pump.PumpLocation);
+                    if (this.chNo.IsChecked == true)
+                    {
+                        if (!m_CheckedPumpLocationList.Contains(pump.PumpLocation))
+                            m_CheckedPumpLocationList.Add(pump.PumpLocation);
+                    }
+                    else
+                    {
+                        if (m_CheckedPumpLocationList.Contains(pump.PumpLocation))
+                            m_CheckedPumpLocationList.Remove(pump.PumpLocation);
+                    }
                 }
             }
         }
 
+        /// <summary>
+        /// 选择泵类型,下拉列表框
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             SinglePump pump = null;

@@ -151,7 +151,7 @@ namespace  AgingSystem
             {
                 if (OnSerialNoTypeIn!=null)
                 {
-                    OnSerialNoTypeIn(this, new SerialNoInputArgs(m_PumpLocation));
+                    OnSerialNoTypeIn(this, new SerialNoInputArgs(m_PumpLocation, tbSerialNo.Text));
                 }
             }
 
@@ -162,7 +162,17 @@ namespace  AgingSystem
         /// </summary>
         public void SetCursor()
         {
+            tbSerialNo.Clear();
             tbSerialNo.Focus();
+        }
+
+        /// <summary>
+        /// 设置序列号
+        /// </summary>
+        /// <param name="sn"></param>
+        public void SetSerialNo(string sn)
+        {
+            tbSerialNo.Text = sn;
         }
 
     }

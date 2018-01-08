@@ -275,6 +275,7 @@ namespace Analyse
     public class SerialNoInputArgs : EventArgs
     {
         private int m_PumpLocation = 0;           //泵位置
+        private string m_SerialNo = string.Empty; //泵的序列号，通过条码枪获得
 
         /// <summary>
         /// 泵位置
@@ -285,9 +286,16 @@ namespace Analyse
             set { m_PumpLocation = value; }
         }
 
-        public SerialNoInputArgs( int pumpLocation)
+        public string SerialNo
+        {
+            get { return m_SerialNo; }
+            set { m_SerialNo = value; }
+        }
+
+        public SerialNoInputArgs(int pumpLocation, string serialNo)
         {
             m_PumpLocation = pumpLocation;
+            m_SerialNo = serialNo;
         }
     }
 }
