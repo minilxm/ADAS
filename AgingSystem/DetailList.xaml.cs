@@ -57,11 +57,24 @@ namespace  AgingSystem
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            if(m_PumpLocationList!=null && m_PumpLocationList.Count<=15)
+            ProductID pid = ProductID.Unknow;
+            CustomProductID cid = CustomProductID.Unknow;
+            if (Enum.IsDefined(typeof(CustomProductID), m_Parameter.PumpType))
             {
-                this.Height += m_PumpLocationList.Count*40;
+                cid = (CustomProductID)Enum.Parse(typeof(CustomProductID), m_Parameter.PumpType);
+                pid = ProductIDConvertor.Custom2ProductID(cid);
+            }
+            int pumpCount = m_PumpLocationList.Count;
+            if (pid == ProductID.GrasebyF8)
+            {
+                pumpCount = pumpCount * 2;
+            }
+
+            if (m_PumpLocationList != null && pumpCount <= 15)
+            {
+                this.Height += pumpCount * 40;
                 this.Height += 8;
-                scroll.Height += m_PumpLocationList.Count*40;
+                scroll.Height += pumpCount * 40;
                 scroll.Height += 8;
             }
             else
@@ -95,6 +108,9 @@ namespace  AgingSystem
                 cid = (CustomProductID)Enum.Parse(typeof(CustomProductID), m_Parameter.PumpType);
                 pid = ProductIDConvertor.Custom2ProductID(cid);
             }
+
+            if (pid == ProductID.GrasebyF8)
+                pumpCount = pumpCount * 2;//F8则需要X2
 
            
             for (int i = 0; i < pumpCount; i++)
