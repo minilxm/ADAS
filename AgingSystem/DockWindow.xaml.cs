@@ -16,6 +16,7 @@ using System.Net.Sockets;
 using System.Collections;
 using System.Threading;
 using System.Windows.Threading;
+using System.Windows.Interop;
 using Analyse;
 using AsyncSocket;
 using Cmd;
@@ -56,6 +57,37 @@ namespace  AgingSystem
             //ColorSet.Add(Color.FromRgb(0x2E, 0x66, 0xBA));
             m_ShowCurrentTimer.Interval = new TimeSpan(0,0,1); //一秒钟更新一次
             m_ShowCurrentTimer.Tick += new EventHandler(OnShowCurrentTime);
+        }
+
+        /// <summary>
+        /// 窗口消息挂钩
+        /// </summary>
+        /// <param name="e"></param>
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            HwndSource hwndSource = PresentationSource.FromVisual(this) as HwndSource;//窗口过程
+            if (hwndSource != null)
+                hwndSource.AddHook(new HwndSourceHook(WndProc));//挂钩
+        }
+
+        /// <summary>
+        /// 窗口消息
+        /// </summary>
+        /// <param name="hwnd"></param>
+        /// <param name="msg"></param>
+        /// <param name="wParam"></param>
+        /// <param name="lParam"></param>
+        /// <param name="handled"></param>
+        /// <returns></returns>
+        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            if (msg == 0x1001)
+            {
+                //保存死亡前的老化结果到excel中
+                SaveAgingDataWhenAppCrash();
+            }
+            return IntPtr.Zero;
         }
 
         /// <summary>
@@ -104,6 +136,7 @@ namespace  AgingSystem
             ProtocolEngine.Instance().Start();
         }
 
+        
         /// <summary>
         /// 窗口退出时关闭TCP服务
         /// </summary>
@@ -200,15 +233,12 @@ namespace  AgingSystem
             AgingDock dock = null;
             for(int i=0;i<m_DockList.Count;i++)
             {
-                
                 dock = m_DockList[i];
                 if(m_DockParameter.ContainsKey(dock.DockNo))
                 {
                     dock.lbPumpType.Content = "泵型号:" + ((AgingParameter)m_DockParameter[dock.DockNo]).PumpType;
                 }
-              
             }
-
         }
 
         private void OnPumpSelected(object sender, SelectedPumpsArgs e)
@@ -476,6 +506,20 @@ namespace  AgingSystem
             else
             {
                 return;
+            }
+        }
+
+        /// <summary>
+        /// 当程序崩溃时，保存最后的数据
+        /// </summary>
+        private void SaveAgingDataWhenAppCrash()
+        {
+            AgingDock dock = null;
+            string fileName = DateTime.Now.ToString("yyyy-MM-dd HH_mm_ss_fff") + ".xlsx";
+            for (int i = 0; i < m_DockList.Count; i++)
+            {
+                dock = m_DockList[i];
+                dock.ExportExcel(fileName);
             }
         }
          
