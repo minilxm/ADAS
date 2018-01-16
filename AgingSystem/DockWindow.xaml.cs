@@ -30,19 +30,19 @@ namespace  AgingSystem
     {
         private delegate void SocketConnectOrCloseDelegate(SocketConnectArgs e);
         private delegate void OnUploadAlarmDelegate(BaseCommand e);
-        
-        private int                 m_DockCount        = 0;
-        public static int           m_QueryInterval    = 0;
-        public static Hashtable     m_DockParameter    = new Hashtable();         //存放每个货架的配置信息（int 货架号，DefaultParameter）
-        public static Hashtable     m_DockPumpList = new Hashtable();         //存放每个货架泵信息（int 货架号，List<Tuple<int,int,int,string>>分别是位置，行号，列号）
-        private List<AgingDock>     m_DockList         = new List<AgingDock>();   //泵架列表
-        private List<Color> ColorSet                   = new List<Color>();
-        private DispatcherTimer     m_ShowCurrentTimer = new DispatcherTimer();   //显示当前时间 
-        private int                 m_TimeOut          = 60000;                    //默认所有超时时间为60秒，包括命令响应时间
-        private int                 m_HeartBeatTimeOut = 240000;                   //默认所有超时时间为4分钟，心跳
-        public static int           m_CheckPumpStatusMaxMunites = 30 * 60;                   //分，设置检查泵状态持续时间，超时将关闭线程
-        public static int           m_CheckPumpStopStatusMaxMunites = 300;              //分，设置检查泵停止状态持续时间，超时将关闭线程
-        public static int           m_CheckDisChargeMaxMunites = 180;              //分，设置检查放电持续时间，超时将关闭线程
+
+        private int m_DockCount = 0;
+        public static int m_QueryInterval = 0;
+        public static Hashtable m_DockParameter = new Hashtable();         //存放每个货架的配置信息（int 货架号，DefaultParameter）
+        public static Hashtable m_DockPumpList = new Hashtable();         //存放每个货架泵信息（int 货架号，List<Tuple<int,int,int,string>>分别是位置，行号，列号）
+        private List<AgingDock> m_DockList = new List<AgingDock>();   //泵架列表
+        private List<Color> ColorSet = new List<Color>();
+        private DispatcherTimer m_ShowCurrentTimer = new DispatcherTimer();   //显示当前时间 
+        private int m_TimeOut = 60000;                    //默认所有超时时间为60秒，包括命令响应时间
+        private int m_HeartBeatTimeOut = 240000;                   //默认所有超时时间为4分钟，心跳
+        public static int m_CheckPumpStatusMaxMunites = 30 * 60;                   //分，设置检查泵状态持续时间，超时将关闭线程
+        public static int m_CheckPumpStopStatusMaxMunites = 300;              //分，设置检查泵停止状态持续时间，超时将关闭线程
+        public static int m_CheckDisChargeMaxMunites = 180;              //分，设置检查放电持续时间，超时将关闭线程
 
         public DockWindow()
         {
@@ -55,7 +55,7 @@ namespace  AgingSystem
             //ColorSet.Add(Color.FromRgb(0x70, 0x92, 0xBE));
             //ColorSet.Add(Color.FromRgb(0xC8, 0xBF, 0xE7));
             //ColorSet.Add(Color.FromRgb(0x2E, 0x66, 0xBA));
-            m_ShowCurrentTimer.Interval = new TimeSpan(0,0,1); //一秒钟更新一次
+            m_ShowCurrentTimer.Interval = new TimeSpan(0, 0, 1); //一秒钟更新一次
             m_ShowCurrentTimer.Tick += new EventHandler(OnShowCurrentTime);
         }
 
@@ -119,7 +119,7 @@ namespace  AgingSystem
             if (!(int.TryParse(config.AppSettings.Settings["HeartBeat"].Value, out m_HeartBeatTimeOut)))
                 m_HeartBeatTimeOut = 240000;
             if (!(int.TryParse(config.AppSettings.Settings["CheckPumpStatusMaxMunites"].Value, out m_CheckPumpStatusMaxMunites)))
-                m_CheckPumpStatusMaxMunites = 30*60;
+                m_CheckPumpStatusMaxMunites = 30 * 60;
             if (!(int.TryParse(config.AppSettings.Settings["CheckPumpStopStatusMaxMunites"].Value, out m_CheckPumpStopStatusMaxMunites)))
                 m_CheckPumpStopStatusMaxMunites = 5 * 60;//5分钟
             if (!(int.TryParse(config.AppSettings.Settings["CheckDisChargeMaxMunites"].Value, out m_CheckDisChargeMaxMunites)))
@@ -136,7 +136,7 @@ namespace  AgingSystem
             ProtocolEngine.Instance().Start();
         }
 
-        
+
         /// <summary>
         /// 窗口退出时关闭TCP服务
         /// </summary>
@@ -144,8 +144,8 @@ namespace  AgingSystem
         /// <param name="e"></param>
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            if(MessageBox.Show("确定要关闭？", "窗口关闭提示", MessageBoxButton.YesNo)==MessageBoxResult.Yes)
-            { 
+            if (MessageBox.Show("确定要关闭？", "窗口关闭提示", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+            {
                 ProtocolEngine.Instance().Stop();
                 e.Cancel = false;
             }
@@ -212,16 +212,16 @@ namespace  AgingSystem
                 m_DockList.Add(dock);
                 Grid.SetRow(dock, i / 5);
                 dock.dockGrid.Background = new SolidColorBrush(ColorSet[i / 5]);
-                dock.DefaultColor =ColorSet[i / 5];
+                dock.DefaultColor = ColorSet[i / 5];
                 Grid.SetColumn(dock, i % 5);
             }
         }
 
         private void OnConfigrationCompleted(object sender, ConfigrationArgs e)
         {
-            foreach(DictionaryEntry entry in e.DockParameter)
+            foreach (DictionaryEntry entry in e.DockParameter)
             {
-                if(m_DockParameter.ContainsKey(entry.Key))
+                if (m_DockParameter.ContainsKey(entry.Key))
                 {
                     m_DockParameter[entry.Key] = new AgingParameter((AgingParameter)entry.Value);
                 }
@@ -231,10 +231,10 @@ namespace  AgingSystem
                 }
             }
             AgingDock dock = null;
-            for(int i=0;i<m_DockList.Count;i++)
+            for (int i = 0; i < m_DockList.Count; i++)
             {
                 dock = m_DockList[i];
-                if(m_DockParameter.ContainsKey(dock.DockNo))
+                if (m_DockParameter.ContainsKey(dock.DockNo))
                 {
                     dock.lbPumpType.Content = "泵型号:" + ((AgingParameter)m_DockParameter[dock.DockNo]).PumpType;
                 }
@@ -243,7 +243,7 @@ namespace  AgingSystem
 
         private void OnPumpSelected(object sender, SelectedPumpsArgs e)
         {
-            foreach(DictionaryEntry entry in e.SelectedPumps)
+            foreach (DictionaryEntry entry in e.SelectedPumps)
             {
                 if (m_DockPumpList.ContainsKey(entry.Key))
                 {
@@ -279,9 +279,9 @@ namespace  AgingSystem
         /// <param name="obj"></param>
         private void ProcSendPumpType2Wifi(object obj)
         {
-            if(obj is SocketConnectArgs)
+            if (obj is SocketConnectArgs)
             {
-                Thread.Sleep(10*1000);
+                Thread.Sleep(10 * 1000);
                 SendPumpType2Wifi(obj as SocketConnectArgs);
                 Thread.Sleep(1000);
             }
@@ -299,13 +299,13 @@ namespace  AgingSystem
         private void SocketConnectOrClose(SocketConnectArgs e)
         {
             Controller controller = ControllerManager.Instance().Get(e.ConnectedSocket);
-            if(controller==null)
+            if (controller == null)
             {
                 return;
             }
             int dockNo = controller.DockNo;
             AgingDock dock = null;
-            for(int i=0;i<m_DockList.Count;i++)
+            for (int i = 0; i < m_DockList.Count; i++)
             {
                 dock = m_DockList[i];
                 if (dock.DockNo == dockNo)
@@ -314,19 +314,19 @@ namespace  AgingSystem
                     {
                         #region
                         //如果已经开始老化了，新的控制器不准连入，但是如果是偶然断开重连的除外
-                        if(dock.IsStartAging)
-                        { 
+                        if (dock.IsStartAging)
+                        {
                             //这里主要是通过连接时间戳判断的
-                            if(controller.SocketConnectTimestamp.Year>2000)
+                            if (controller.SocketConnectTimestamp.Year > 2000)
                                 controller.SocketConnectTimestamp = DateTime.Now;
                             else
                             {
-                                if (controller.SocketToken != null && controller.SocketToken.ConnectSocket!=null)
+                                if (controller.SocketToken != null && controller.SocketToken.ConnectSocket != null)
                                     AsyncServer.Instance().CloseClientSocketEx(controller.SocketToken);
-                                    //controller.SocketToken.ConnectSocket.Shutdown(SocketShutdown.Both);
+                                //controller.SocketToken.ConnectSocket.Shutdown(SocketShutdown.Both);
                                 else
                                 {
-                                    Logger.Instance().ErrorFormat("SocketConnectOrClose() Error,编号为{0}的控制器SocketToken为null",dockNo);
+                                    Logger.Instance().ErrorFormat("SocketConnectOrClose() Error,编号为{0}的控制器SocketToken为null", dockNo);
                                 }
                                 break;
                             }
@@ -336,7 +336,7 @@ namespace  AgingSystem
                             controller.SocketConnectTimestamp = DateTime.Now;
                         }
                         SolidColorBrush brush = dock.dockGrid.Background as SolidColorBrush;
-                        switch(dock.AgingStatus)
+                        switch (dock.AgingStatus)
                         {
                             case EAgingStatus.Unknown:
                             case EAgingStatus.Waiting:
@@ -345,7 +345,7 @@ namespace  AgingSystem
                                 break;
                             case EAgingStatus.PowerOn:
                                 dock.dockGrid.Background = new SolidColorBrush(Colors.Blue);
-                                    break;
+                                break;
                             case EAgingStatus.Charging:
                             case EAgingStatus.DisCharging:
                             case EAgingStatus.Recharging:
@@ -362,15 +362,15 @@ namespace  AgingSystem
                         }
                         dock.lbStatus.Content = AgingStatusMetrix.Instance().GetAgingStatus(dock.AgingStatus);
                         List<Controller> controllers = ControllerManager.Instance().Get(dockNo);
-                        int clientCount = controllers.Count((x) => { return x.SocketToken != null && x.SocketToken.ConnectSocket!=null && x.SocketToken.ConnectSocket.Connected == true; });
+                        int clientCount = controllers.Count((x) => { return x.SocketToken != null && x.SocketToken.ConnectSocket != null && x.SocketToken.ConnectSocket.Connected == true; });
                         dock.lbWifiCount.Content = string.Format("控制器数量:{0}/5", clientCount);
-                    #endregion
+                        #endregion
                     }
                     else
                     {
                         #region
                         List<Controller> controllers = ControllerManager.Instance().Get(dockNo);
-                        int clientCount = controllers.Count((x) => { return x.SocketToken != null && x.SocketToken != e.ConnectedSocket && x.SocketToken.ConnectSocket !=null && x.SocketToken.ConnectSocket.Connected == true; });
+                        int clientCount = controllers.Count((x) => { return x.SocketToken != null && x.SocketToken != e.ConnectedSocket && x.SocketToken.ConnectSocket != null && x.SocketToken.ConnectSocket.Connected == true; });
                         dock.lbWifiCount.Content = string.Format("控制器数量:{0}/5", clientCount);
                         //int index = controllers.FindIndex((x) => { return x.SocketToken != null && x.SocketToken != e.ConnectedSocket;});
                         if (clientCount <= 0)
@@ -383,7 +383,7 @@ namespace  AgingSystem
                         #endregion
                     }
                     break;
-                   
+
                 }
             }
         }
@@ -399,11 +399,11 @@ namespace  AgingSystem
             if (controller == null)
                 return;
             int dockNo = controller.DockNo;
-            AgingDock dock = m_DockList.Find((x)=>{return x.DockNo==dockNo;});
-            if(dock==null || dock.ChannelHashRowNo==null || !dock.ChannelHashRowNo.ContainsKey(controller.RowNo))
+            AgingDock dock = m_DockList.Find((x) => { return x.DockNo == dockNo; });
+            if (dock == null || dock.ChannelHashRowNo == null || !dock.ChannelHashRowNo.ContainsKey(controller.RowNo))
                 return;
             AgingParameter para = m_DockParameter[dockNo] as AgingParameter;
-            if (para!=null)
+            if (para != null)
             {
                 if (Enum.IsDefined(typeof(CustomProductID), para.PumpType))
                 {
@@ -458,7 +458,7 @@ namespace  AgingSystem
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        
+
         public void CommandResponse(object sender, EventArgs e)
         {
             if (e is CmdSendPumpType)
@@ -474,11 +474,11 @@ namespace  AgingSystem
         /// <param name="e"></param>
         private void OnStartAll(object sender, RoutedEventArgs e)
         {
-            foreach(var dock in m_DockList)
+            foreach (var dock in m_DockList)
             {
-                if(dock!=null)
+                if (dock != null)
                 {
-                    if(dock.CanStart())
+                    if (dock.CanStart())
                     {
                         dock.StartAging();
                     }
@@ -495,9 +495,9 @@ namespace  AgingSystem
         {
             if (MessageBox.Show("确定要全部停止吗？", "提示", MessageBoxButton.OKCancel) == MessageBoxResult.OK)
             {
-                foreach(var dock in m_DockList)
+                foreach (var dock in m_DockList)
                 {
-                    if(dock!=null)
+                    if (dock != null)
                     {
                         dock.StopAging();
                     }
@@ -516,12 +516,32 @@ namespace  AgingSystem
         {
             AgingDock dock = null;
             string fileName = DateTime.Now.ToString("yyyy-MM-dd HH_mm_ss_fff") + ".xlsx";
+            List<Controller> controllers = null;
             for (int i = 0; i < m_DockList.Count; i++)
             {
                 dock = m_DockList[i];
-                dock.ExportExcel(fileName);
+                controllers = dock.Controllers;
+                if (controllers == null)
+                    continue;
+                for (int j = 0; i < controllers.Count; j++)
+                {
+                    if (controllers[j] != null)
+                    {
+                        List<AgingPump> pumpList = controllers[j].SortAgingPumpList();
+                        if (pumpList == null || pumpList.Count == 0)
+                            continue;
+                        else
+                        {
+                            dock.ExportExcel(fileName);
+                            break;
+                        }
+                    }
+                }
             }
         }
-         
+
+
+
+
     }
 }

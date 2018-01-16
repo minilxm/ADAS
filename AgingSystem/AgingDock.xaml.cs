@@ -94,7 +94,14 @@ namespace  AgingSystem
 
         private DateTime m_LastRechargeTime = DateTime.MinValue;                                //货架上最后一个补电开始时间
 
-
+        /// <summary>
+        /// 老化架上的控制器列表
+        /// </summary>
+        public List<Controller> Controllers
+        {
+            get { return m_Controllers; }
+            set { m_Controllers = value; }
+        }
 
         /// <summary>
         /// 货架号
