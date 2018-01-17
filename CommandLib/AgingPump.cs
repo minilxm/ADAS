@@ -29,8 +29,8 @@ namespace Cmd
         private uint                       m_Alarm                    = 0;                         //报警信息，每一位代表一个报警
         private int                        m_LostTimes                = 0;                         //失联次数，当发生某种不可预测的打入原因，泵端在老化的中间阶段一直没反应，每次上报信息时都会记录它，达到5次以上者，认为不无效的泵
         private Hashtable                  m_AlarmOccurredTime        = new Hashtable();           //<uint, DateTime>记录每位报警第一次发生时的时间
-        
         private DateTime                   m_BeginRechargeTime        = DateTime.MinValue;         //补电开始时间,20170709,补电操作由补电线程来完成，控制器正常情况下收到命令后会进行补电操作，控制器命令返回时记录补电时间
+        private byte                       m_SubChannel               = 0;                         //对于多道泵只有一个串口的，指明当前连接的是第几道，如：F8有两道，编号从0开始
 
         /// <summary>
         /// 失联次数
@@ -64,6 +64,16 @@ namespace Cmd
             get { return m_Channel; }
             set { m_Channel = value; }
         }
+
+        /// <summary>
+        /// 第几道泵，只用于多道泵,编号从0开始
+        /// </summary>
+        public byte SubChannel
+        {
+            get { return m_SubChannel; }
+            set { m_SubChannel = value; }
+        }
+
         /// <summary>
         /// 机器型号
         /// </summary>
