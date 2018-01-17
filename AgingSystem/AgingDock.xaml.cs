@@ -1694,6 +1694,7 @@ namespace  AgingSystem
             {
                 if(contorllerList[i]!=null)
                 {
+                    //老化上传的报警信息初始化pumpList，所以F8上传的泵信息是两份。
                     List<AgingPump> pumpList = contorllerList[i].SortAgingPumpList();
                     for(int j=0;j<pumpList.Count;j++)
                     {
