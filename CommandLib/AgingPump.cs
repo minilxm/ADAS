@@ -222,15 +222,13 @@ namespace Cmd
 
         public string GetAlarmString()
         {
-            //Cmd.AlarmMetrix.Instance().
-             ProductID pid  = ProductID.Unknow;
-            if(Enum.IsDefined(typeof(ProductID), m_PumpType))
-                pid = (ProductID)Enum.Parse(typeof(ProductID), m_PumpType);
-            else
+            CustomProductID cid = ProductIDConvertor.Name2CustomProductID(m_PumpType);
+            if(cid == CustomProductID.Unknow)
             {
-                Logger.Instance().ErrorFormat("泵类型转换出错，不支持的类型 PumpType ={0}",m_PumpType);
+                Logger.Instance().ErrorFormat("泵类型转换出错，不支持的类型 PumpType ={0}", m_PumpType);
                 return string.Empty;
             }
+            ProductID pid = ProductIDConvertor.Custom2ProductID(cid);
             Hashtable alarmMetrix = null;
             #region //查询所属报警的映射表
             switch (pid)
@@ -268,15 +266,15 @@ namespace Cmd
             #endregion
             StringBuilder sb = new StringBuilder();
             int iCount = 0;
-            foreach(DictionaryEntry dic in alarmMetrix)
+            foreach (DictionaryEntry dic in alarmMetrix)
             {
                 uint alarmID = (uint)dic.Key;
-                if((alarmID & m_Alarm)==alarmID)
+                if ((alarmID & m_Alarm) == alarmID)
                 {
                     sb.Append(dic.Value);
                     sb.Append(";");
                     ++iCount;
-                    if(iCount%2==0)
+                    if (iCount % 2 == 0)
                         sb.Append("\n");
                 }
             }
@@ -285,14 +283,13 @@ namespace Cmd
 
         public string GetAlarmStringAndOcurredTime()
         {
-            ProductID pid = ProductID.Unknow;
-            if (Enum.IsDefined(typeof(ProductID), m_PumpType))
-                pid = (ProductID)Enum.Parse(typeof(ProductID), m_PumpType);
-            else
+            CustomProductID cid = ProductIDConvertor.Name2CustomProductID(m_PumpType);
+            if (cid == CustomProductID.Unknow)
             {
                 Logger.Instance().ErrorFormat("泵类型转换出错，不支持的类型 PumpType ={0}", m_PumpType);
                 return string.Empty;
             }
+            ProductID pid = ProductIDConvertor.Custom2ProductID(cid);
             Hashtable alarmMetrix = null;
             #region //查询所属报警的映射表
             switch (pid)
@@ -357,14 +354,13 @@ namespace Cmd
         /// <returns></returns>
         public bool IsPass()
         {
-            ProductID pid  = ProductID.Unknow;
-            if(Enum.IsDefined(typeof(ProductID), m_PumpType))
-                pid = (ProductID)Enum.Parse(typeof(ProductID), m_PumpType);
-            else
+            CustomProductID cid = ProductIDConvertor.Name2CustomProductID(m_PumpType);
+            if (cid == CustomProductID.Unknow)
             {
-                Logger.Instance().ErrorFormat("泵类型转换出错，不支持的类型 PumpType ={0}",m_PumpType);
+                Logger.Instance().ErrorFormat("泵类型转换出错，不支持的类型 PumpType ={0}", m_PumpType);
                 return false;
             }
+            ProductID pid = ProductIDConvertor.Custom2ProductID(cid);
             Hashtable alarmMetrix = null;
             uint depletealArmIndex = 0, lowVolArmIndex = 0;//耗尽和低电压索引
             uint completeArmIndex = 0, willCompleteArmIndex = 0;//输液结束和输液即将结束

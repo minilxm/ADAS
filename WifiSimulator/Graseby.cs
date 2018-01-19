@@ -118,9 +118,14 @@ namespace WifiSimulator
             package.Add(0x00);
             package.Add(0x07);
             package.Add(0x16);
-
+            //数据长度
             package.Add((byte)(pumpCount * 22));
+            package.Add(0x00);
+
+            //数据长度取反
             package.Add((byte)((byte)0xFF - (byte)(pumpCount * 22)));
+            package.Add(0xFF);
+
             for (int i = 0; i < pumpCount; i++)
                 package.AddRange(CreateSinglePumpAlarm((byte)(i + 1), alarm));
             //泵电源状态
@@ -145,8 +150,14 @@ namespace WifiSimulator
             package.Add(0x07);
             package.Add(0x16);
 
+            //数据长度
             package.Add((byte)(pumpCount * 22));
+            package.Add(0x00);
+
+            //数据长度取反
             package.Add((byte)((byte)0xFF - (byte)(pumpCount * 22)));
+            package.Add(0xFF);
+
             for (int i = 0; i < pumpCount; i++)
             {
                 if (pumpIndexs.Contains(i + 1))
@@ -169,8 +180,14 @@ namespace WifiSimulator
             package.Add(0x07);
             package.Add(0x16);
 
+            //数据长度
             package.Add((byte)(pumpCount * 22));
+            package.Add(0x00);
+
+            //数据长度取反
             package.Add((byte)((byte)0xFF - (byte)(pumpCount * 22)));
+            package.Add(0xFF);
+
             for (int i = 0; i < pumpCount; i++)
                 package.AddRange(CreateSinglePumpAlarm((byte)(i + 1)));
             //泵电源状态

@@ -118,7 +118,7 @@ namespace  AgingSystem
             {
                 SingleDetail detail = new SingleDetail();
                 //F6,F8双道泵显示详细内容与其他泵不一样，要体现双道信息
-                if (pid == ProductID.GrasebyF6 || pid == ProductID.WZS50F6)
+                if (cid == CustomProductID.GrasebyF6_Double || cid == CustomProductID.WZS50F6_Double)
                 {
                     if (m_PumpLocationList[i].Item3 % 2 == 0)
                     {
@@ -130,7 +130,7 @@ namespace  AgingSystem
                     }
                     detail.lbPumpSN.Content = m_PumpLocationList[i].Item4;
                 }
-                else if (pid == ProductID.GrasebyF8)
+                else if (cid == CustomProductID.GrasebyF8)
                 {
                     if(i%2==0)
                         detail.lbPumpLocation.Content = string.Format("{0}-{1}-{2}(1道泵)", m_DockNo, m_PumpLocationList[i/2].Item2, m_PumpLocationList[i/2].Item3);
@@ -149,7 +149,7 @@ namespace  AgingSystem
                 detail.lbPumpType.Content = m_Parameter.PumpType;
                 detail.lbRate.Content = m_Parameter.Rate.ToString();
                 AgingPump AgingPump = null;
-                if (pid == ProductID.GrasebyF8)
+                if (cid == CustomProductID.GrasebyF8)
                 {
                     //F8双通道共用一个串口，在查找泵时需要指定通道编号从0开始
                     AgingPump = m_AgingPumpList.Find((x) => { return x.DockNo == m_DockNo && x.RowNo == m_PumpLocationList[i/2].Item2 && x.Channel == m_PumpLocationList[i/2].Item3 && x.SubChannel==i % 2; });

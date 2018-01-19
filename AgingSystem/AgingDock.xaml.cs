@@ -739,9 +739,10 @@ namespace  AgingSystem
             CustomProductID cid = CustomProductID.Unknow;
             if (para != null)
             {
-                if (Enum.IsDefined(typeof(CustomProductID), para.PumpType))
+                //自从添加了双道泵之后，需要先将泵类型转换成CustomProductID，然后再转成对应的ProductID
+                cid = ProductIDConvertor.Name2CustomProductID(para.PumpType);
+                if (cid != CustomProductID.Unknow)
                 {
-                    cid = (CustomProductID)Enum.Parse(typeof(CustomProductID), para.PumpType);
                     pid = ProductIDConvertor.Custom2ProductID(cid);
                 }
                 else
@@ -830,9 +831,9 @@ namespace  AgingSystem
             if (para != null)
             {
                 //自从添加了双道泵之后，需要先将泵类型转换成CustomProductID，然后再转成对应的ProductID
-                if (Enum.IsDefined(typeof(CustomProductID), para.PumpType))
+                cid = ProductIDConvertor.Name2CustomProductID(para.PumpType);
+                if (cid != CustomProductID.Unknow)
                 {
-                    cid = (CustomProductID)Enum.Parse(typeof(CustomProductID), para.PumpType);
                     pid = ProductIDConvertor.Custom2ProductID(cid);
                 }
                 else

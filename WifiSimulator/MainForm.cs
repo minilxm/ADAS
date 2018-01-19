@@ -984,6 +984,7 @@ namespace WifiSimulator
         {
             //m_ProductID = 66;
             m_SendFlag = 0;
+            this.m_Pump.SendFlag = m_SendFlag;
             StartTimer();
         }
 
@@ -991,6 +992,7 @@ namespace WifiSimulator
         {
             //m_ProductID = 66      ;
             m_SendFlag = 1;
+            this.m_Pump.SendFlag = m_SendFlag;
             StartTimer();
         }
 
@@ -998,6 +1000,7 @@ namespace WifiSimulator
         {
             //m_ProductID = 66;
             m_SendFlag = 2;
+            this.m_Pump.SendFlag = m_SendFlag;
             StartTimer();
         }
 
@@ -1005,6 +1008,7 @@ namespace WifiSimulator
         {
             //m_ProductID = 66;
             m_SendFlag = 3;
+            this.m_Pump.SendFlag = m_SendFlag;
             StartTimer();
         }
 

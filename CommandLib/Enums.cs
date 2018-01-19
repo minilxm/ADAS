@@ -170,6 +170,9 @@ namespace Cmd
                 case CustomProductID.GrasebyC9:
                     pid = ProductID.GrasebyC9;
                     break;
+                default:
+                    pid = ProductID.Unknow;
+                    break;
             }
             return pid;
         }
