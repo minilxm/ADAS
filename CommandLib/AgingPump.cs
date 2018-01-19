@@ -329,7 +329,6 @@ namespace Cmd
             }
             #endregion
             StringBuilder sb = new StringBuilder();
-            int iCount = 0;
             DateTime ocurredTime = DateTime.MinValue;
             foreach (DictionaryEntry dic in alarmMetrix)
             {

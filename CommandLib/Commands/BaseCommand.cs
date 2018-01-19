@@ -17,13 +17,11 @@ namespace Cmd
         protected byte   m_Direction            = 0;                            //命令标识（0、1）
         protected byte   m_MessageID            = 0;                            //8位MessageID
         protected byte   m_Channel              = 0xFF;                         //8位通道号
-        //protected ushort m_SerialNo             = 0;                            //四位整数的序列号(1001开始),采用静态IP后序列号取消
-        protected byte   m_PayloadLength        = 0;                            //8位数据长度
-        protected byte   m_PayloadLengthReverse = 0;                            //255-8位数据长度
+        protected ushort m_PayloadLength        = 0;                            //16位数据长度,20180119添加F8后报警数据上报长度超过255字节
+        protected ushort m_PayloadLengthReverse = 0;                            //0xFFFF-m_PayloadLength位数据长度,20180119添加F8后报警数据上报长度超过255字节
         protected uint   m_Checksum             = 0;                            //32位检验和
         protected long   m_TimeStamp            = 0;                            //单位：100毫微秒=10（-7）秒
         protected string m_ErrorMsg             = string.Empty;                 //可能有错误信息
-        //protected Socket m_RemoteSocket         = null;                         //此处的SOCKET为WIFI模块客户端，由上层应用初始化
         protected AsyncSocketUserToken m_RemoteSocket = null;                   //此处的SOCKET为WIFI模块客户端，由上层应用初始化
         protected byte   m_TryCount             = 0;                            //命令重试的次数,如果没有成功，再发送一次
 
@@ -68,16 +66,16 @@ namespace Cmd
         /// <summary>
         /// 命令消息长度
         /// </summary>
-        public byte PayloadLength
+        public ushort PayloadLength
         {
             get { return m_PayloadLength; }
             set { m_PayloadLength = value; }
         }
 
         /// <summary>
-        /// 255-命令消息长度
+        /// 65535-命令消息长度
         /// </summary>
-        public byte PayloadLengthReverse
+        public ushort PayloadLengthReverse
         {
             get { return m_PayloadLengthReverse; }
             set { m_PayloadLengthReverse = value; }
@@ -162,13 +160,13 @@ namespace Cmd
         /// <param name="payloadLength"></param>
         /// <param name="checksum"></param>
         /// <param name="channel">8位通道号通常为0xFF</param>
-        public BaseCommand(byte direction, byte messageID, byte payloadLength, uint checksum,  byte channel=0xFF)
+        public BaseCommand(byte direction, byte messageID, ushort payloadLength, uint checksum,  byte channel=0xFF)
         {
             m_Direction     = direction;
             m_MessageID     = messageID;
             m_Checksum      = checksum;
             m_PayloadLength = payloadLength;
-            m_PayloadLengthReverse = (byte)(0xFF - payloadLength);
+            m_PayloadLengthReverse = (ushort)(0xFFFF - payloadLength);
             m_Channel = channel;
         }
 
@@ -178,10 +176,10 @@ namespace Cmd
         /// 更新命令数据体长度
         /// </summary>
         /// <param name="length"></param>
-        public void UpdatePayloadLength(byte length)
+        public void UpdatePayloadLength(ushort length)
         {
             m_PayloadLength = length;
-            m_PayloadLengthReverse = (byte)(0xFF - m_PayloadLength);
+            m_PayloadLengthReverse = (ushort)(0xFFFF - m_PayloadLength);
         }
 
         /// <summary>
@@ -194,8 +192,10 @@ namespace Cmd
             buffer.Add(m_Direction);
             buffer.Add(m_MessageID);
             buffer.Add(m_Channel);
-            buffer.Add(m_PayloadLength);
-            buffer.Add(m_PayloadLengthReverse);
+            buffer.Add((byte)(m_PayloadLength & 0x00FF));
+            buffer.Add((byte)((m_PayloadLength >> 8) & 0x00FF));
+            buffer.Add((byte)(m_PayloadLengthReverse & 0x00FF));
+            buffer.Add((byte)((m_PayloadLengthReverse >> 8) & 0x00FF));
             return buffer;
         }
 
@@ -209,8 +209,10 @@ namespace Cmd
             buffer.Add(m_Direction);
             buffer.Add(m_MessageID);
             buffer.Add(m_Channel);
-            buffer.Add(m_PayloadLength);
-            buffer.Add(m_PayloadLengthReverse);
+            buffer.Add((byte)(m_PayloadLength & 0x00FF));
+            buffer.Add((byte)((m_PayloadLength >> 8) & 0x00FF));
+            buffer.Add((byte)(m_PayloadLengthReverse & 0x00FF));
+            buffer.Add((byte)((m_PayloadLengthReverse >> 8) & 0x00FF));
             return buffer;
         }
 

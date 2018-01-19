@@ -52,7 +52,7 @@ namespace Analyse
         private Hashtable                m_HashReceivedBuffer        = new Hashtable();                     //接收数据HSAH表<SOCKET， SocketBuffer>，每个SOCKET一个BUFFER
         //private List<byte>               m_ReceivedBuffer            = new List<byte>();
         //private List<byte>               m_CommandBuffer             = new List<byte>();                  //分离出一个完整的命令结构
-        private const int                HEADLENGTH                  = 5;                                   //部首5字节
+        private const int                HEADLENGTH                  = 7;                                   //部首7字节
         private DeviceType               m_ConnType                  = DeviceType.SerialPort;               //默认是串口
         private AsyncServer              m_Device                    = null;                                //通信类基类(TCP)
 
@@ -363,7 +363,7 @@ namespace Analyse
                 }
                 if (buffer.ReceivedBuffer.Count <= 0)
                     continue;
-                //读头部固定5字节
+                //读头部固定7字节
                 buffer.HeadReadCount = CatchStartMessage(buffer);
                 if (buffer.HeadReadCount < HEADLENGTH)
                     continue;
@@ -414,9 +414,9 @@ namespace Analyse
             byte[] cmdBytes = null;
             lock(CommandBuffer)
             { 
-                if(CommandBuffer.Count<9)
+                if(CommandBuffer.Count<11)
                 { 
-                    Logger.Instance().Error("CreateCommand() Error! CommandBuffer.Count<10");
+                    Logger.Instance().Error("CreateCommand() Error! CommandBuffer.Count<11");
                     return null;
                 }
                 cmdBytes = new byte[CommandBuffer.Count];
@@ -433,9 +433,13 @@ namespace Analyse
             }
             cmd.Direction = cmdBytes[0];
             cmd.Channel = cmdBytes[2];
-            //分析命令数据长度
-            cmd.PayloadLength = cmdBytes[3];
-            cmd.PayloadLengthReverse = cmdBytes[4];
+            //分析命令数据长度20180119改为两个字节了
+            cmd.PayloadLength = (ushort)(cmdBytes[4] << 8);
+            cmd.PayloadLength += (ushort)cmdBytes[3];
+            //20180119改为两个字节了
+            cmd.PayloadLengthReverse = (ushort)(cmdBytes[6] << 8);
+            cmd.PayloadLengthReverse += (ushort)cmdBytes[5];
+
             //分离出最后4字节的Checksum
             cmd.Checksum = (uint)(cmdBytes[cmdBytes.Length - 1] << 24);
             cmd.Checksum += (uint)(cmdBytes[cmdBytes.Length - 2] << 16);
@@ -478,9 +482,9 @@ namespace Analyse
             int iCount = 0;
             lock(buffer)
             {
-                //读头部5个固定字节（读到Payload length）
+                //读头部7个固定字节（读到Payload length）
                 iCount =  buffer.ReceivedBuffer.Count;
-                if(iCount<7)
+                if (iCount < HEADLENGTH)
                 {
                     Logger.Instance().ErrorFormat("CatchStartMessage() Error,数据头长度小于7 buffer.ReceivedBuffer.Count={0}", iCount);
                     return -1;
@@ -500,14 +504,16 @@ namespace Analyse
         /// <returns></returns>
         private int CatchPayloadDataAndChecksum(SocketBuffer buffer)
         {
-            if (buffer.CommandBuffer.Count < 5) //这里应该报错。因为部首5字节不完整
+            if (buffer.CommandBuffer.Count < HEADLENGTH) //这里应该报错。因为部首7字节不完整
             {
-                Logger.Instance().Error("CatchPayloadDataAndChecksum Error! buffer.CommandBuffer.Count<6");
+                Logger.Instance().Error("CatchPayloadDataAndChecksum Error! buffer.CommandBuffer.Count<7");
                 return -1;
             }
             lock(buffer.ReceivedBuffer)
-            { 
-                byte payloadLength = buffer.CommandBuffer[3];
+            {
+                ushort payloadLength = (ushort)(buffer.CommandBuffer[4] << 8);
+                payloadLength += (ushort)buffer.CommandBuffer[3];
+
                 int iCount = buffer.ReceivedBuffer.Count;
                 if(iCount < payloadLength + 4)
                 {
@@ -516,7 +522,6 @@ namespace Analyse
                     return -2;
                 }
                 buffer.CommandBuffer.AddRange(buffer.ReceivedBuffer.GetRange(0,payloadLength + 4));
-                //temp.Clear();
                 buffer.ReceivedBuffer.RemoveRange(0, payloadLength + 4);        //读完数据后，立即移走
             }
             return 0;

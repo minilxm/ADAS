@@ -67,24 +67,24 @@ namespace Cmd
         /// <param name="payloadData"></param>
         public override void SetBytes(byte[] payloadData)
         {
-            if(payloadData.Length==0)
+            if (payloadData.Length == 0)
             {
                 Logger.Instance().Error("报警信息数据包有误,数据包长度为0！");
                 return;
             }
-            byte packageSize = this.Channel;
-            byte payloadLength = this.m_PayloadLength;
-            if(payloadLength%packageSize!=0)
+            byte packageSize = this.Channel;//泵报警信息命令比较特殊，它的通道号不是指具体的通道ID，而是一个单泵包的字节大小
+            ushort payloadLength = this.m_PayloadLength;
+            if (payloadLength % packageSize != 0)
             {
-                Logger.Instance().ErrorFormat("报警信息数据包有误不是单包的整数倍，单包大小={0},包总大小={1}",packageSize,payloadLength);
+                Logger.Instance().ErrorFormat("报警信息数据包有误不是单包的整数倍，单包大小={0},包总大小={1}", packageSize, payloadLength);
                 return;
             }
-            int count = payloadLength/packageSize;      //必须是整数倍，否则一定是错的
+            int count = payloadLength / packageSize;      //必须是整数倍，否则一定是错的
             byte[] temp = new byte[packageSize];
-            for(int iLoop=0;iLoop<count;iLoop++)
+            for (int iLoop = 0; iLoop < count; iLoop++)
             {
                 Array.Clear(temp, 0, packageSize);
-                Array.Copy(payloadData,iLoop*packageSize,temp,0,packageSize);
+                Array.Copy(payloadData, iLoop * packageSize, temp, 0, packageSize);
                 m_PumpPackages.Add(new SinglePumpPackage(temp));
             }
         }
