@@ -378,6 +378,8 @@ namespace Analyse
                     if (null != ShowBytesOnUI)
                         ShowBytesOnUI(this, new SendOrReceiveBytesArgs(buffer.CommandBuffer, false));
                     buffer.CommandBuffer.Clear();
+                    if (cmd == null)
+                        continue;
                     cmd.RemoteSocket = buffer.RemoteSock;
                     //每次有新的命令到来，检查下控制器，是否有SocketToken==null的情况，如果有，则更新
                     Controller controller = ControllerManager.Instance().Get(buffer.RemoteSock);

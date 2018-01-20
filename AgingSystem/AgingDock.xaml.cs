@@ -530,11 +530,22 @@ namespace  AgingSystem
                                     completeCount++;
                                 }
                             }
+                            else if (m_CurrentCustomProductID == CustomProductID.GrasebyF8)
+                            {
+                                if (pump.SubChannel==0)
+                                {
+                                    completeCount++;
+                                }
+                            }
                             else
                                 completeCount++;
                             if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double || m_CurrentCustomProductID == CustomProductID.WZS50F6_Double)
                             {
                                 this.Dispatcher.BeginInvoke(new DeleUpdateCompleteCount(UpdateCompleteCount), new object[] { completeCount, ((List<Tuple<int, int, int, string>>)m_HashPumps[m_DockNo]).Count / 2 });
+                            }
+                            else if (m_CurrentCustomProductID == CustomProductID.GrasebyF8)
+                            {
+                                this.Dispatcher.BeginInvoke(new DeleUpdateCompleteCount(UpdateCompleteCount), new object[] { completeCount, ((List<Tuple<int, int, int, string>>)m_HashPumps[m_DockNo]).Count });
                             }
                             else
                             {
@@ -1737,11 +1748,11 @@ namespace  AgingSystem
                             {
                                 #region GrasebyF8
                                 index = 0;
-                                worksheet.Cells[rowIndex, ++index] = rowIndex - 1;
 
                                 //F8双道泵不用记录第二道，两道合一起,基本信息取自第一道泵
                                 if (pumpList[j].SubChannel == 0)
                                 {
+                                    worksheet.Cells[rowIndex, ++index] = rowIndex - 1;
                                     worksheet.Cells[rowIndex, ++index] = string.Format("{0}—{1}—{2}", m_DockNo, pumpList[j].RowNo, pumpList[j].Channel);
                                     worksheet.Cells[rowIndex, ++index] = pumpList[j].PumpType;//型号
 
@@ -1820,7 +1831,7 @@ namespace  AgingSystem
                                         }
                                         #endregion
                                         worksheet.Cells[rowIndex, ++index] = bPass && bPass2 && isBatteryOK == true ? "通过" : "失败";                                             //老化结果:电池不合格也不能通过
-                                        worksheet.Cells[rowIndex, ++index] = pumpList[j].GetAlarmStringAndOcurredTime() + strSecondPumpAlarm;                                                          //报警:带记录第一次发生时间
+                                        worksheet.Cells[rowIndex, ++index] = pumpList[j].GetAlarmStringAndOcurredTime() + "\n" + strSecondPumpAlarm;                                                          //报警:带记录第一次发生时间
 
                                         Excel.Range titleRange = worksheet.Range[worksheet.Cells[rowIndex, 1], worksheet.Cells[rowIndex, index]];                                 //选取一行   
                                         if (bPass && isBatteryOK)
@@ -2042,7 +2053,15 @@ namespace  AgingSystem
                                 #endregion
                             }
                         }
-                        rowIndex++;
+                        if (m_CurrentCustomProductID == CustomProductID.GrasebyF8)
+                        {
+                            if(j%2==1)
+                            {
+                                rowIndex++;
+                            }
+                        }
+                        else
+                            rowIndex++;
                     }
                 }
             }
@@ -2628,6 +2647,7 @@ namespace  AgingSystem
 
                     AgingPump pumpSecond = null;
 
+                    #region GrasebyF6\WZS50F6
                     if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double || m_CurrentCustomProductID == CustomProductID.WZS50F6_Double)
                     {
                         if (ch % 2 == 1)
@@ -2638,7 +2658,7 @@ namespace  AgingSystem
                             }
                             catch
                             {
-                                Logger.Instance().Info("CommandResponseForReCharge()->depleteController.AgingPumpList.Find() pumpSecond Error");
+                                Logger.Instance().Info("CommandResponseForReCharge()->depleteController.AgingPumpList.Find() F6 pumpSecond Error");
                             }
 
                             if (pumpSecond != null)
@@ -2653,6 +2673,31 @@ namespace  AgingSystem
                             }
                         }
                     }
+                    #endregion
+
+                    #region GrasebyF8
+                    if (m_CurrentCustomProductID == CustomProductID.GrasebyF8)
+                    {
+                        try
+                        {
+                            pumpSecond = depleteController.AgingPumpList.Find((x) => { return x.Channel == ch && x.SubChannel == 1; });
+                        }
+                        catch
+                        {
+                            Logger.Instance().Info("CommandResponseForReCharge()->depleteController.AgingPumpList.Find() GrasebyF8 pumpSecond Error");
+                        }
+                        if (pumpSecond != null)
+                        {
+                            pumpSecond.BeginRechargeTime = DateTime.Now;
+                            pumpSecond.AgingStatus = EAgingStatus.Recharging;
+                            Logger.Instance().InfoFormat("货架编号={0},控制器IP={1},通道号={2}, 第{3}道泵已经补电", pumpSecond.DockNo, cmd.RemoteSocket.IP, pumpSecond.Channel, pumpSecond.SubChannel);
+                        }
+                        else
+                        {
+                            Logger.Instance().InfoFormat("CommandResponseForReCharge()-> GrasebyF8 pumpSecond泵对象为null 控制器IP={0} 通道号={1}", cmd.RemoteSocket.IP, ch);
+                        }
+                    }
+                    #endregion
                 }
                 //收到回应后移除报警泵
                 lock (m_DepleteManager)
