@@ -1559,6 +1559,11 @@ namespace  AgingSystem
                             if (m_Controllers[i].AgingPumpList[j].Channel % 2 == 0)
                                 continue;
                         }
+                        if (m_CurrentCustomProductID == CustomProductID.GrasebyF8)
+                        {
+                            if (m_Controllers[i].AgingPumpList[j].SubChannel == 1)
+                                continue;
+                        }
                         //泵已经进行了补电
                         if (m_Controllers[i].AgingPumpList[j].BeginBattaryDepleteTime.Year > 2000 && m_Controllers[i].AgingPumpList[j].BeginRechargeTime.Year > 2000)
                         {
@@ -2690,7 +2695,7 @@ namespace  AgingSystem
                         {
                             pumpSecond.BeginRechargeTime = DateTime.Now;
                             pumpSecond.AgingStatus = EAgingStatus.Recharging;
-                            Logger.Instance().InfoFormat("货架编号={0},控制器IP={1},通道号={2}, 第{3}道泵已经补电", pumpSecond.DockNo, cmd.RemoteSocket.IP, pumpSecond.Channel, pumpSecond.SubChannel);
+                            Logger.Instance().InfoFormat("货架编号={0},控制器IP={1},通道号={2}, 双道中的第{3}道泵已经补电", pumpSecond.DockNo, cmd.RemoteSocket.IP, pumpSecond.Channel, pumpSecond.SubChannel+1);
                         }
                         else
                         {
