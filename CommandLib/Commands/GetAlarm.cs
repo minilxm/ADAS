@@ -72,9 +72,9 @@ namespace Cmd
                 Logger.Instance().Error("报警信息数据包有误,数据包长度为0！");
                 return;
             }
-            byte packageSize = this.Channel;//泵报警信息命令比较特殊，它的通道号不是指具体的通道ID，而是一个单泵包的字节大小
-            ushort payloadLength = this.m_PayloadLength;
-            if (payloadLength % packageSize != 0)
+            byte packageSize = this.Channel;
+            byte payloadLength = this.m_PayloadLength;
+            if(payloadLength%packageSize!=0)
             {
                 Logger.Instance().ErrorFormat("报警信息数据包有误不是单包的整数倍，单包大小={0},包总大小={1}", packageSize, payloadLength);
                 return;
