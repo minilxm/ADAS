@@ -28,6 +28,7 @@ namespace  AgingSystem
         private int m_DockCount = 0;
         private int m_DockNo = 0;       //货架编号从1开始增加
         private List<Color> m_PumpBackgroundColor = new List<Color>();
+        private List<int> m_CheckedPumpLocationList = new  List<int>();//选中的泵的位置编号，在光标跳到下一序列号框中，方便查找
         
         public Configuration()
         {
@@ -66,23 +67,42 @@ namespace  AgingSystem
             InitSelectedPumps();
         }
 
+        /// <summary>
+        /// 初始化泵的类型（自定义的类型）
+        /// </summary>
         private void InitPumpType()
         {
             cmPumpType.ItemsSource = ProductIDConvertor.GetAllCustomProductIDName();
         }
 
+        /// <summary>
+        /// 重新初始化压力等级，C9有个等级，其他泵则只有4个
+        /// </summary>
+        /// <param name="cid"></param>
+        private void InitPressureLevel(CustomProductID cid)
+        {
+            if (cid == CustomProductID.GrasebyC9)
+            {
+                cmOcclusionLevel.ItemsSource = Enum.GetNames(typeof(C9OcclusionLevel));
+            }
+            else
+            {
+                cmOcclusionLevel.ItemsSource = Enum.GetNames(typeof(OcclusionLevel));
+            }
+        }
+
+        /// <summary>
+        /// 当已经配置完成后，重新再进入配置界面时，要将之前的参数赋值
+        /// </summary>
         private void InitParameter()
         {
             if(DockWindow.m_DockParameter.ContainsKey(m_DockNo))
             {
                 AgingParameter para = DockWindow.m_DockParameter[m_DockNo] as AgingParameter;
                 int index = -1;
-                ComboBoxItem item = null;
                 for (int i = 0; i < cmPumpType.Items.Count; i++)
                 {
-                    item = cmPumpType.Items[i] as ComboBoxItem;
-                    //cmPumpType.Items[9]
-                    if (string.Compare(item.Content.ToString(), para.PumpType, true) == 0)
+                    if (string.Compare(cmPumpType.Items[i].ToString(), para.PumpType, true) == 0)
                     {
                         index = i;
                         break;
@@ -91,34 +111,48 @@ namespace  AgingSystem
                 if (index >= 0)
                 {
                     cmPumpType.SelectedIndex = index;
-                }
-                for (int i = 0; i < cmOcclusionLevel.Items.Count; i++)
-                {
-                    item = cmOcclusionLevel.Items[i] as ComboBoxItem;
-                    //cmPumpType.Items[9]
-                    if (string.Compare(item.Content.ToString(), para.OclusionLevel.ToString(), true) == 0)
+                    CustomProductID cid = ProductIDConvertor.Name2CustomProductID(para.PumpType);
+                    for (int i = 0; i < cmOcclusionLevel.Items.Count; i++)
                     {
-                        index = i;
-                        break;
+                        if (cid == CustomProductID.GrasebyC9)
+                        {
+                            if (string.Compare(cmOcclusionLevel.Items[i].ToString(), para.C9OclusionLevel.ToString(), true) == 0)
+                            {
+                                index = i;
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            if (string.Compare(cmOcclusionLevel.Items[i].ToString(), para.OclusionLevel.ToString(), true) == 0)
+                            {
+                                index = i;
+                                break;
+                            }
+                        }
                     }
-                }
-                if (index >= 0)
-                {
-                    cmOcclusionLevel.SelectedIndex = index;
+                    if (index >= 0)
+                    {
+                        cmOcclusionLevel.SelectedIndex = index;
+                    }
                 }
                 tbRate.Text = para.Rate.ToString();
                 tbVolume.Text = para.Volume.ToString();
                 tbCharge.Text = para.ChargeTime.ToString();
-                //tbDischarge.Text = para.DischargeTime.ToString();
                 tbRecharge.Text = para.RechargeTime.ToString();
             }
         }
 
+        /// <summary>
+        /// 哪些泵已经选中
+        /// </summary>
         private void InitSelectedPumps()
         {
+            //进入此界面时需要将m_CheckedPumpLocationList清空
+            m_CheckedPumpLocationList.Clear();
             if (DockWindow.m_DockPumpList.ContainsKey(m_DockNo))
             {
-                List<Tuple<int,int,int>> pumpLocation = DockWindow.m_DockPumpList[m_DockNo] as List<Tuple<int,int,int>>;
+                List<Tuple<int, int, int, string>> pumpLocation = DockWindow.m_DockPumpList[m_DockNo] as List<Tuple<int, int, int, string>>;
                
                 SinglePump pump = null;
                 for (int i = 0; i < pumplistGrid.Children.Count; i++)
@@ -126,10 +160,18 @@ namespace  AgingSystem
                     if (pumplistGrid.Children[i] is SinglePump)
                     {
                         pump = pumplistGrid.Children[i] as SinglePump;
-                        if (pump.Tag!=null && pumpLocation.FindIndex((x)=>{return x.Item1==(int)pump.Tag;})>=0)
+                        if (pump.Tag != null)
                         {
-                            pump.chNo.IsChecked = true;
+                            Tuple<int, int, int, string> location = pumpLocation.Find((x) => { return x.Item1 == (int)pump.Tag;});
+                            if (location != null)
+                            {
+                                pump.chNo.IsChecked = true;
+                                pump.SerialNo = location.Item4;
+                                if (!m_CheckedPumpLocationList.Contains(pump.PumpLocation))
+                                    m_CheckedPumpLocationList.Add(pump.PumpLocation);
+                            }
                         }
+
                     }
                 }
              
@@ -215,6 +257,7 @@ namespace  AgingSystem
                 pump.Cursor = Cursors.Hand;
                 pump.SetPump(i + 1, "", "");
                 pump.OnClickCheckBox += OnSinglePumpClickCheckBox;
+                pump.OnSerialNoTypeIn += OnSerialNoInputComplete;
                 pumplistGrid.Children.Add(pump);
                 Grid.SetRow(pump, rowIndex);
                 if (i % 2 == 1)
@@ -222,29 +265,135 @@ namespace  AgingSystem
                 Grid.SetColumn(pump, i % 2);
                 pump.Background = new SolidColorBrush(m_PumpBackgroundColor[i / pumpCountPerRow]);
             }
-
         }
 
+        /// <summary>
+        /// 双道F6 WZ50F6都不用点击第二道，当点击第一道时，第二道自动勾选
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void OnSinglePumpClickCheckBox(object sender, SinglePumpArgs e)
         {
             SinglePump self = sender as SinglePump;
             SinglePump pump = null;
-            if(e!=null)
+            if (e != null)
             {
-                if(e.PumpLocation%2==0 && e.PumpLocation>0)
+                //如果是双道泵
+                if (e.EnableCheckBoxClick)
                 {
-                    pump = FindPumpByLocation(e.PumpLocation - 1);
-                    if(pump!=null)
+                    //点击奇数位泵偶数位也要相应点击,反之亦然
+                    if (e.PumpLocation % 2 == 0 && e.PumpLocation > 0)
                     {
-                        pump.chNo.IsChecked = self.chNo.IsChecked;
+                        pump = FindPumpByLocation(e.PumpLocation - 1);
+                        if (pump != null)
+                        {
+                            pump.chNo.IsChecked = self.chNo.IsChecked;
+                        }
+                    }
+                    else if (e.PumpLocation % 2 == 1)
+                    {
+                        pump = FindPumpByLocation(e.PumpLocation + 1);
+                        if (pump != null)
+                        {
+                            pump.chNo.IsChecked = self.chNo.IsChecked;
+                        }
+                    }
+
+                    if (pump != null && pump.chNo.IsChecked == true)
+                    {
+                        if (!m_CheckedPumpLocationList.Contains(pump.PumpLocation))
+                            m_CheckedPumpLocationList.Add(pump.PumpLocation);
+                    }
+                    else
+                    {
+                        if (m_CheckedPumpLocationList.Contains(pump.PumpLocation))
+                            m_CheckedPumpLocationList.Remove(pump.PumpLocation);
                     }
                 }
-                else if(e.PumpLocation%2==1)
+
+                if (self.chNo.IsChecked == true)
                 {
-                    pump = FindPumpByLocation(e.PumpLocation + 1);
+                    if (!m_CheckedPumpLocationList.Contains(e.PumpLocation))
+                        m_CheckedPumpLocationList.Add(e.PumpLocation);
+                }
+                else
+                {
+                    if (m_CheckedPumpLocationList.Contains(e.PumpLocation))
+                        m_CheckedPumpLocationList.Remove(e.PumpLocation);
+                }
+                m_CheckedPumpLocationList.Sort();//默认是从小到大排序
+            }
+        }
+
+        /// <summary>
+        /// 当条码枪完成一次扫码，光标自动跳到下一条
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void OnSerialNoInputComplete(object sender, SerialNoInputArgs e)
+        {
+            if (m_CheckedPumpLocationList.Count <= 0)
+                return;
+            if (cmPumpType.SelectedIndex < 0)
+                return;
+            string strPumpType = cmPumpType.Items[cmPumpType.SelectedIndex].ToString();
+            CustomProductID cid = ProductIDConvertor.Name2CustomProductID(strPumpType);
+            int index = m_CheckedPumpLocationList.FindIndex((x) => { return e.PumpLocation == x; });
+            if (index >= 0 && index + 1 < m_CheckedPumpLocationList.Count)
+            {
+                if (cid == CustomProductID.GrasebyF6_Double || cid == CustomProductID.WZS50F6_Double)
+                {
+                    #region
+                    SinglePump pump = null;
+                    //第一道泵序列号与第二道 一样
+                    if (index % 2 == 0)
+                    {
+                        if (m_CheckedPumpLocationList.Count > index + 1)
+                        {
+                            pump = FindPumpByLocation(m_CheckedPumpLocationList[index + 1]);
+                            if (pump != null)
+                            {
+                                pump.SetSerialNo(e.SerialNo);
+                            }
+                        }
+                        if (m_CheckedPumpLocationList.Count > index + 2)
+                        {
+                            //光标跳到下一个泵
+                            pump = FindPumpByLocation(m_CheckedPumpLocationList[index + 2]);
+                            if (pump != null)
+                            {
+                                pump.SetCursor();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (m_CheckedPumpLocationList.Count > index - 1)
+                        {
+                            pump = FindPumpByLocation(m_CheckedPumpLocationList[index - 1]);
+                            if (pump != null)
+                            {
+                                pump.SetSerialNo(e.SerialNo);
+                            }
+                        }
+                        //光标跳到下一个泵
+                        if (m_CheckedPumpLocationList.Count > index + 1)
+                        {
+                            pump = FindPumpByLocation(m_CheckedPumpLocationList[index + 1]);
+                            if (pump != null)
+                            {
+                                pump.SetCursor();
+                            }
+                        }
+                    }
+                    #endregion
+                }
+                else
+                {
+                    SinglePump pump = FindPumpByLocation(m_CheckedPumpLocationList[index + 1]);
                     if (pump != null)
                     {
-                        pump.chNo.IsChecked = self.chNo.IsChecked;
+                        pump.SetCursor();
                     }
                 }
             }
@@ -281,12 +430,9 @@ namespace  AgingSystem
                 if(bRet==true)
                 {
                     int index = -1;
-                    ComboBoxItem item = null;
                     for(int i = 0;i<cmPumpType.Items.Count;i++)
                     {
-                        item = cmPumpType.Items[i] as ComboBoxItem;
-                        //cmPumpType.Items[9]
-                        if( string.Compare(item.Content.ToString(),parameterList.Args.m_PumpType, true)==0)
+                        if (string.Compare(cmPumpType.Items[i].ToString(), parameterList.Args.m_PumpType, true) == 0)
                         {
                             index = i;
                             break;
@@ -298,9 +444,7 @@ namespace  AgingSystem
                     }
                     for(int i = 0;i<cmOcclusionLevel.Items.Count;i++)
                     {
-                        item = cmOcclusionLevel.Items[i] as ComboBoxItem;
-                        //cmPumpType.Items[9]
-                        if( string.Compare(item.Content.ToString(),parameterList.Args.m_OccLevel, true)==0)
+                        if( string.Compare(cmOcclusionLevel.Items[i].ToString(),parameterList.Args.m_OccLevel, true)==0)
                         {
                             index = i;
                             break;
@@ -313,7 +457,6 @@ namespace  AgingSystem
                     tbRate.Text = parameterList.Args.m_Rate;
                     tbVolume.Text = parameterList.Args.m_Volume;
                     tbCharge.Text = parameterList.Args.m_ChargeTime;
-                    //tbDischarge.Text = parameterList.Args.m_DischargeTime;
                     tbRecharge.Text = parameterList.Args.m_RechargeTime;
                 }
                 else
@@ -336,28 +479,42 @@ namespace  AgingSystem
                 MessageBox.Show("请将参数填写完整");
                 return;
             }
-            ComboBoxItem item      = cmPumpType.SelectedItem as ComboBoxItem;
-            ComboBoxItem itemLevel = cmOcclusionLevel.SelectedItem as ComboBoxItem;
+            string szCustomPid = cmPumpType.Items[cmPumpType.SelectedIndex].ToString();
+            string szPressureLevel = cmOcclusionLevel.Items[cmOcclusionLevel.SelectedIndex].ToString();
             decimal rate           = Convert.ToDecimal(float.Parse(tbRate.Text).ToString("F1"));
             decimal volume         = Convert.ToDecimal(float.Parse(tbVolume.Text).ToString("F1"));
             decimal charge         = Convert.ToDecimal(tbCharge.Text);
-           
-            OcclusionLevel level   = OcclusionLevel.H;
-            if(Enum.IsDefined(typeof(OcclusionLevel), itemLevel.Content.ToString()))
-                level = (OcclusionLevel)Enum.Parse(typeof(OcclusionLevel), itemLevel.Content.ToString());
+
+            CustomProductID cid = ProductIDConvertor.Name2CustomProductID(szCustomPid);
+            OcclusionLevel level = OcclusionLevel.H;
+            C9OcclusionLevel c9Level = C9OcclusionLevel.Level3;
+
+            if (cid == CustomProductID.GrasebyC9)
+            {
+                if (Enum.IsDefined(typeof(C9OcclusionLevel), szPressureLevel))
+                    c9Level = (C9OcclusionLevel)Enum.Parse(typeof(C9OcclusionLevel), szPressureLevel);
+                else
+                    Logger.Instance().ErrorFormat("Configuration::OnSave()->压力转换出错,C9OcclusionLevel={0}", szPressureLevel);
+            }
             else
-                Logger.Instance().ErrorFormat("Configuration::OnSave()->压力转换出错,OcclusionLevel={0}", itemLevel.Content.ToString());
+            {
+                if (Enum.IsDefined(typeof(OcclusionLevel), szPressureLevel))
+                    level = (OcclusionLevel)Enum.Parse(typeof(OcclusionLevel), szPressureLevel);
+                else
+                    Logger.Instance().ErrorFormat("Configuration::OnSave()->压力转换出错,OcclusionLevel={0}", szPressureLevel);
+            }
+            
             decimal discharge = 0;
             decimal recharge  = Convert.ToDecimal(tbRecharge.Text);
-
             Hashtable dockParameter = new Hashtable();
-            AgingParameter para = new AgingParameter(item.Content.ToString(),
+            AgingParameter para = new AgingParameter(szCustomPid,
                                                      rate,
                                                      volume,
                                                      charge,
                                                      discharge,
                                                      recharge,
-                                                     level);
+                                                     level,
+                                                     c9Level);
             for(int i=0;i<otherDockCheckBoxGrid.Children.Count;i++)
             {
                 if(otherDockCheckBoxGrid.Children[i] is CheckBox)
@@ -380,14 +537,14 @@ namespace  AgingSystem
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             SinglePump pump = null;
-            List<Tuple<int,int,int>> pumpLocationList = new List<Tuple<int,int,int>>();
+            List<Tuple<int, int, int, string>> pumpLocationList = new List<Tuple<int, int, int, string>>();
             for (int i = 0; i < pumplistGrid.Children.Count; i++)
             {
                 if (pumplistGrid.Children[i] is SinglePump)
                 {
                     pump = pumplistGrid.Children[i] as SinglePump;
                     if (pump.chNo.IsChecked.HasValue && pump.chNo.IsChecked==true)
-                        pumpLocationList.Add(new Tuple<int,int,int>((int)pump.Tag, pump.RowNo, pump.ColNo));
+                        pumpLocationList.Add(new Tuple<int, int, int, string>((int)pump.Tag, pump.RowNo, pump.ColNo, pump.SerialNo));
                 }
             }
             Hashtable hashPumps = new Hashtable();
@@ -409,14 +566,29 @@ namespace  AgingSystem
             SinglePump pump = null;
             for(int i=0;i<pumplistGrid.Children.Count; i++)
             {
-                if(pumplistGrid.Children[i] is SinglePump)
+                if (pumplistGrid.Children[i] is SinglePump)
                 {
                     pump = pumplistGrid.Children[i] as SinglePump;
                     pump.chNo.IsChecked = this.chNo.IsChecked;
+                    if (this.chNo.IsChecked == true)
+                    {
+                        if (!m_CheckedPumpLocationList.Contains(pump.PumpLocation))
+                            m_CheckedPumpLocationList.Add(pump.PumpLocation);
+                    }
+                    else
+                    {
+                        if (m_CheckedPumpLocationList.Contains(pump.PumpLocation))
+                            m_CheckedPumpLocationList.Remove(pump.PumpLocation);
+                    }
                 }
             }
         }
 
+        /// <summary>
+        /// 选择泵类型,下拉列表框
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             SinglePump pump = null;
@@ -430,6 +602,7 @@ namespace  AgingSystem
                     pump = pumplistGrid.Children[i] as SinglePump;
                     strPumpType = cmPumpType.Items[cmPumpType.SelectedIndex].ToString();
                     cid = ProductIDConvertor.Name2CustomProductID(strPumpType);
+                    InitPressureLevel(cid);
                     if (cid == CustomProductID.GrasebyF6_Double || cid == CustomProductID.WZS50F6_Double)
                     {
                         if (pump.Tag != null && !string.IsNullOrEmpty(pump.Tag.ToString()))

@@ -170,10 +170,11 @@ namespace Cmd
         /// <param name="dockNo"></param>
         /// <param name="rowNo"></param>
         /// <param name="channel"></param>
+        /// <param name="subChannel">F8特有0:1道1：第二道</param>
         /// <returns></returns>
-        public AgingPump FindPump(int dockNo, int rowNo, byte channel)
+        public AgingPump FindPump(int dockNo, int rowNo, byte channel, byte subChannel=0)
         {
-            AgingPump pump = m_AgingPumpList.Find((x)=>{return x.DockNo==dockNo && x.RowNo==rowNo && x.Channel==channel;});
+            AgingPump pump = m_AgingPumpList.Find((x) => { return x.DockNo == dockNo && x.RowNo == rowNo && x.Channel == channel && x.SubChannel==subChannel; });
             return pump;
         }
 

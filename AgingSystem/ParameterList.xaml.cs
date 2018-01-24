@@ -76,6 +76,7 @@ namespace  AgingSystem
                         #region
                         string[] factor = s.Split(separator, StringSplitOptions.RemoveEmptyEntries);
                         OcclusionLevel level = OcclusionLevel.H;
+                        C9OcclusionLevel c9Level = C9OcclusionLevel.Level3;
                         if (factor.Length != 7)
                             continue;
                         if (decimal.TryParse(factor[1],    out outValue[0])
@@ -87,10 +88,14 @@ namespace  AgingSystem
                         {
                             if(Enum.IsDefined(typeof(OcclusionLevel), factor[6]))
                                 level = (OcclusionLevel)Enum.Parse(typeof(OcclusionLevel), factor[6]);
+                            else if (Enum.IsDefined(typeof(C9OcclusionLevel), factor[6]))
+                            {
+                                c9Level = (C9OcclusionLevel)Enum.Parse(typeof(C9OcclusionLevel), factor[6]);
+                            }
                             else
                                 break;
                             //如果转换成功，就新建一个DefaultParameter对象
-                            ParameterManager.Instance().Add(new AgingParameter(factor[0], outValue[0], outValue[1], outValue[2], outValue[3], outValue[4], level));
+                            ParameterManager.Instance().Add(new AgingParameter(factor[0], outValue[0], outValue[1], outValue[2], outValue[3], outValue[4], level, c9Level));
                             continue;
                         }
                         #endregion
@@ -120,9 +125,9 @@ namespace  AgingSystem
                     paraList[iLoop].Rate.ToString(), 
                     paraList[iLoop].Volume.ToString(),
                     paraList[iLoop].ChargeTime.ToString(),
-                    //paraList[iLoop].DischargeTime.ToString(),
                     paraList[iLoop].OclusionLevel.ToString(),
-                    paraList[iLoop].RechargeTime.ToString());
+                    paraList[iLoop].RechargeTime.ToString(),
+                    paraList[iLoop].C9OclusionLevel.ToString());
                 para.Margin = new Thickness(1);
                 para.Cursor = Cursors.Hand;
                 para.OnSelected += OnSelected;

@@ -72,6 +72,10 @@ namespace WifiSimulator
                     m_ProductID = ProductID.GrasebyC8;
                     m_Pump = new C8(m_Client);
                     break;
+                case ProductID.GrasebyF8:
+                    m_ProductID = ProductID.GrasebyF8;
+                    m_Pump = new F8(m_Client);
+                    break;
                 default:
                     m_ProductID = ProductID.GrasebyC8;
                     m_Pump = new C8(m_Client);
@@ -984,6 +988,7 @@ namespace WifiSimulator
         {
             //m_ProductID = 66;
             m_SendFlag = 0;
+            this.m_Pump.SendFlag = m_SendFlag;
             StartTimer();
         }
 
@@ -991,6 +996,7 @@ namespace WifiSimulator
         {
             //m_ProductID = 66      ;
             m_SendFlag = 1;
+            this.m_Pump.SendFlag = m_SendFlag;
             StartTimer();
         }
 
@@ -998,6 +1004,7 @@ namespace WifiSimulator
         {
             //m_ProductID = 66;
             m_SendFlag = 2;
+            this.m_Pump.SendFlag = m_SendFlag;
             StartTimer();
         }
 
@@ -1005,6 +1012,7 @@ namespace WifiSimulator
         {
             //m_ProductID = 66;
             m_SendFlag = 3;
+            this.m_Pump.SendFlag = m_SendFlag;
             StartTimer();
         }
 
@@ -1032,6 +1040,46 @@ namespace WifiSimulator
             }
         }
 
-     
+        #region F8
+
+        private void btnF8LowAlarmSingle_Click(object sender, EventArgs e)
+        {
+            m_SendFlag = 1;
+            this.m_Pump.SendFlag = m_SendFlag;
+            StartTimer();
+        }
+
+        private void btnF8LowVolC8Single_Click(object sender, EventArgs e)
+        {
+            m_SendFlag = 2;
+            this.m_Pump.SendFlag = m_SendFlag;
+            StartTimer();
+        }
+
+        private void btnF8DelepeC8Single_Click(object sender, EventArgs e)
+        {
+            m_SendFlag = 3;
+            this.m_Pump.SendFlag = m_SendFlag;
+            StartTimer();
+        }
+
+        private void btnF8NoAlarmC8Single_Click(object sender, EventArgs e)
+        {
+            m_SendFlag = 0;
+            this.m_Pump.SendFlag = m_SendFlag;
+            StartTimer();
+        }
+
+        private void btnF8ResponsePumpType_Click(object sender, EventArgs e)
+        {
+            pumpTypeResponseFlag = 1;
+        }
+
+        private void btnF8StopAll_Click(object sender, EventArgs e)
+        {
+            pumpTypeResponseFlag = 2;
+        }
+        #endregion
+
     }
 }

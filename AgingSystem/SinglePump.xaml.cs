@@ -21,12 +21,14 @@ namespace  AgingSystem
     public partial class SinglePump : UserControl
     {
         public event EventHandler<SinglePumpArgs> OnClickCheckBox;
+        public event EventHandler<SerialNoInputArgs> OnSerialNoTypeIn;
 
-        private int  m_DockNO                   = 0;            //货架编号
-        private int  m_PumpLocation             = 0;            //泵位置
-        private int  m_RowNo                    = 0;            //从1开始
-        private int  m_ColNo                    = 0;            //从1 开始
-        private bool m_EnableCheckBoxClick      = false; //是否允许点击事件，当双道泵时，选择第一道泵时，第二道泵默认勾上
+        private int    m_DockNO                   = 0;            //货架编号
+        private int    m_PumpLocation             = 0;            //泵位置
+        private int    m_RowNo                    = 0;            //从1开始
+        private int    m_ColNo                    = 0;            //从1 开始
+        private bool   m_EnableCheckBoxClick      = false;        //是否允许点击事件，当双道泵时，选择第一道泵时，第二道泵默认勾上
+        //private string m_SerialNo                 = string.Empty; //泵的序列号，通过条码枪获得
 
         /// <summary>
         /// 货架编号
@@ -73,7 +75,14 @@ namespace  AgingSystem
             set { m_EnableCheckBoxClick = value; }
         }
 
-
+        /// <summary>
+        /// 序列号
+        /// </summary>
+        public string SerialNo
+        {
+            get { return tbSerialNo.Text; }
+            set { tbSerialNo.Text = value; }
+        }
 
         public SinglePump()
         {
@@ -102,11 +111,23 @@ namespace  AgingSystem
             m_ColNo = colNo;
         }
 
+        public SinglePump(int dockNO, int pumpLocation, int rowNo, int colNo, string serialNo)
+        {
+            InitializeComponent();
+            m_DockNO = dockNO;
+            m_PumpLocation = pumpLocation;
+            m_RowNo = rowNo;
+            m_ColNo = colNo;
+            //m_SerialNo = serialNo;
+            tbSerialNo.Text = serialNo;
+        }
+
         public void SetPump(int pumpLocation, string strPumpType, string strSerialNo = "")
         {
             chNo.Content = m_DockNO.ToString() + "-" + pumpLocation.ToString();
             lbPumpType.Content = strPumpType;
-            lbSerialNo.Content = strSerialNo;
+            //m_SerialNo = strSerialNo;
+            tbSerialNo.Text = strSerialNo;
         }
 
         /// <summary>
@@ -116,13 +137,42 @@ namespace  AgingSystem
         /// <param name="e"></param>
         private void OnCheckBoxClick(object sender, RoutedEventArgs e)
         {
-            if(m_EnableCheckBoxClick)
+            //m_EnableCheckBoxClick为true时表示双道泵第二道自动勾选
+            if (OnClickCheckBox != null)
             {
-                if(OnClickCheckBox!=null)
+                OnClickCheckBox(this, new SinglePumpArgs(m_DockNO, m_PumpLocation, m_RowNo, m_ColNo, m_EnableCheckBoxClick, tbSerialNo.Text));
+            }
+        }
+
+        private void OnSerialNoKeyUp(object sender, KeyEventArgs e)
+        {
+            e.Handled = false;
+            if (tbSerialNo.Text.Length>=11)
+            {
+                if (OnSerialNoTypeIn!=null)
                 {
-                    OnClickCheckBox(this, new SinglePumpArgs(m_DockNO, m_PumpLocation, m_RowNo, m_ColNo, m_EnableCheckBoxClick));
+                    OnSerialNoTypeIn(this, new SerialNoInputArgs(m_PumpLocation, tbSerialNo.Text));
                 }
             }
+
+        }
+
+        /// <summary>
+        /// 设置光标位置
+        /// </summary>
+        public void SetCursor()
+        {
+            tbSerialNo.Clear();
+            tbSerialNo.Focus();
+        }
+
+        /// <summary>
+        /// 设置序列号
+        /// </summary>
+        /// <param name="sn"></param>
+        public void SetSerialNo(string sn)
+        {
+            tbSerialNo.Text = sn;
         }
 
     }

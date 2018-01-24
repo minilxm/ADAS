@@ -49,6 +49,7 @@
             this.btnCreateSingle = new System.Windows.Forms.Button();
             this.btnCloseSingle = new System.Windows.Forms.Button();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.cbPumpType = new System.Windows.Forms.ComboBox();
             this.cbPumpCount = new System.Windows.Forms.ComboBox();
             this.chSelectAll = new System.Windows.Forms.CheckBox();
             this.pnlCheckBoxs = new System.Windows.Forms.Panel();
@@ -60,6 +61,7 @@
             this.checkBox4 = new System.Windows.Forms.CheckBox();
             this.tbLocalIP = new System.Windows.Forms.TextBox();
             this.label6 = new System.Windows.Forms.Label();
+            this.btnSetPump = new System.Windows.Forms.Button();
             this.label7 = new System.Windows.Forms.Label();
             this.btnDelepeC6Single = new System.Windows.Forms.Button();
             this.btnLowAlarmSingle = new System.Windows.Forms.Button();
@@ -83,14 +85,21 @@
             this.btnF6LowVolC6Single = new System.Windows.Forms.Button();
             this.btnF6NoAlarmC6Single = new System.Windows.Forms.Button();
             this.btnF6DelepeC6Single = new System.Windows.Forms.Button();
-            this.cbPumpType = new System.Windows.Forms.ComboBox();
-            this.btnSetPump = new System.Windows.Forms.Button();
+            this.tabPage4 = new System.Windows.Forms.TabPage();
+            this.button1 = new System.Windows.Forms.Button();
+            this.btnF8StopAll = new System.Windows.Forms.Button();
+            this.btnF8ResponsePumpType = new System.Windows.Forms.Button();
+            this.btnF8LowAlarmSingle = new System.Windows.Forms.Button();
+            this.btnF8LowVolC8Single = new System.Windows.Forms.Button();
+            this.btnF8NoAlarmC8Single = new System.Windows.Forms.Button();
+            this.btnF8DelepeC8Single = new System.Windows.Forms.Button();
             this.groupBox1.SuspendLayout();
             this.pnlCheckBoxs.SuspendLayout();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.tabPage2.SuspendLayout();
             this.tabPage3.SuspendLayout();
+            this.tabPage4.SuspendLayout();
             this.SuspendLayout();
             // 
             // btnHighAlarm
@@ -301,6 +310,14 @@
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "创建单个客户端";
             // 
+            // cbPumpType
+            // 
+            this.cbPumpType.FormattingEnabled = true;
+            this.cbPumpType.Location = new System.Drawing.Point(441, 72);
+            this.cbPumpType.Name = "cbPumpType";
+            this.cbPumpType.Size = new System.Drawing.Size(121, 20);
+            this.cbPumpType.TabIndex = 12;
+            // 
             // cbPumpCount
             // 
             this.cbPumpCount.FormattingEnabled = true;
@@ -417,6 +434,16 @@
             this.label6.TabIndex = 7;
             this.label6.Text = "本地IP：";
             // 
+            // btnSetPump
+            // 
+            this.btnSetPump.Location = new System.Drawing.Point(568, 69);
+            this.btnSetPump.Name = "btnSetPump";
+            this.btnSetPump.Size = new System.Drawing.Size(79, 25);
+            this.btnSetPump.TabIndex = 6;
+            this.btnSetPump.Text = "设置泵类型";
+            this.btnSetPump.UseVisualStyleBackColor = true;
+            this.btnSetPump.Click += new System.EventHandler(this.btnSetPump_Click);
+            // 
             // label7
             // 
             this.label7.AutoSize = true;
@@ -461,6 +488,7 @@
             this.tabControl1.Controls.Add(this.tabPage1);
             this.tabControl1.Controls.Add(this.tabPage2);
             this.tabControl1.Controls.Add(this.tabPage3);
+            this.tabControl1.Controls.Add(this.tabPage4);
             this.tabControl1.Location = new System.Drawing.Point(8, 151);
             this.tabControl1.Name = "tabControl1";
             this.tabControl1.SelectedIndex = 0;
@@ -670,23 +698,91 @@
             this.btnF6DelepeC6Single.UseVisualStyleBackColor = true;
             this.btnF6DelepeC6Single.Click += new System.EventHandler(this.btnF6DelepeC6Single_Click);
             // 
-            // cbPumpType
+            // tabPage4
             // 
-            this.cbPumpType.FormattingEnabled = true;
-            this.cbPumpType.Location = new System.Drawing.Point(441, 72);
-            this.cbPumpType.Name = "cbPumpType";
-            this.cbPumpType.Size = new System.Drawing.Size(121, 20);
-            this.cbPumpType.TabIndex = 12;
+            this.tabPage4.Controls.Add(this.button1);
+            this.tabPage4.Controls.Add(this.btnF8StopAll);
+            this.tabPage4.Controls.Add(this.btnF8ResponsePumpType);
+            this.tabPage4.Controls.Add(this.btnF8LowAlarmSingle);
+            this.tabPage4.Controls.Add(this.btnF8LowVolC8Single);
+            this.tabPage4.Controls.Add(this.btnF8NoAlarmC8Single);
+            this.tabPage4.Controls.Add(this.btnF8DelepeC8Single);
+            this.tabPage4.Location = new System.Drawing.Point(4, 22);
+            this.tabPage4.Name = "tabPage4";
+            this.tabPage4.Padding = new System.Windows.Forms.Padding(3);
+            this.tabPage4.Size = new System.Drawing.Size(665, 333);
+            this.tabPage4.TabIndex = 3;
+            this.tabPage4.Text = "F8";
+            this.tabPage4.UseVisualStyleBackColor = true;
             // 
-            // btnSetPump
+            // button1
             // 
-            this.btnSetPump.Location = new System.Drawing.Point(568, 69);
-            this.btnSetPump.Name = "btnSetPump";
-            this.btnSetPump.Size = new System.Drawing.Size(79, 25);
-            this.btnSetPump.TabIndex = 6;
-            this.btnSetPump.Text = "设置泵类型";
-            this.btnSetPump.UseVisualStyleBackColor = true;
-            this.btnSetPump.Click += new System.EventHandler(this.btnSetPump_Click);
+            this.button1.Location = new System.Drawing.Point(381, 103);
+            this.button1.Name = "button1";
+            this.button1.Size = new System.Drawing.Size(75, 23);
+            this.button1.TabIndex = 14;
+            this.button1.Text = "部分启动";
+            this.button1.UseVisualStyleBackColor = true;
+            // 
+            // btnF8StopAll
+            // 
+            this.btnF8StopAll.Location = new System.Drawing.Point(381, 130);
+            this.btnF8StopAll.Name = "btnF8StopAll";
+            this.btnF8StopAll.Size = new System.Drawing.Size(75, 23);
+            this.btnF8StopAll.TabIndex = 15;
+            this.btnF8StopAll.Text = "全部停止";
+            this.btnF8StopAll.UseVisualStyleBackColor = true;
+            this.btnF8StopAll.Click += new System.EventHandler(this.btnF8StopAll_Click);
+            // 
+            // btnF8ResponsePumpType
+            // 
+            this.btnF8ResponsePumpType.Location = new System.Drawing.Point(381, 74);
+            this.btnF8ResponsePumpType.Name = "btnF8ResponsePumpType";
+            this.btnF8ResponsePumpType.Size = new System.Drawing.Size(75, 23);
+            this.btnF8ResponsePumpType.TabIndex = 16;
+            this.btnF8ResponsePumpType.Text = "全部启动";
+            this.btnF8ResponsePumpType.UseVisualStyleBackColor = true;
+            this.btnF8ResponsePumpType.Click += new System.EventHandler(this.btnF8ResponsePumpType_Click);
+            // 
+            // btnF8LowAlarmSingle
+            // 
+            this.btnF8LowAlarmSingle.Location = new System.Drawing.Point(209, 62);
+            this.btnF8LowAlarmSingle.Name = "btnF8LowAlarmSingle";
+            this.btnF8LowAlarmSingle.Size = new System.Drawing.Size(108, 47);
+            this.btnF8LowAlarmSingle.TabIndex = 10;
+            this.btnF8LowAlarmSingle.Text = "发送低字节报警";
+            this.btnF8LowAlarmSingle.UseVisualStyleBackColor = true;
+            this.btnF8LowAlarmSingle.Click += new System.EventHandler(this.btnF8LowAlarmSingle_Click);
+            // 
+            // btnF8LowVolC8Single
+            // 
+            this.btnF8LowVolC8Single.Location = new System.Drawing.Point(209, 115);
+            this.btnF8LowVolC8Single.Name = "btnF8LowVolC8Single";
+            this.btnF8LowVolC8Single.Size = new System.Drawing.Size(108, 48);
+            this.btnF8LowVolC8Single.TabIndex = 11;
+            this.btnF8LowVolC8Single.Text = "F8低电报警";
+            this.btnF8LowVolC8Single.UseVisualStyleBackColor = true;
+            this.btnF8LowVolC8Single.Click += new System.EventHandler(this.btnF8LowVolC8Single_Click);
+            // 
+            // btnF8NoAlarmC8Single
+            // 
+            this.btnF8NoAlarmC8Single.Location = new System.Drawing.Point(209, 223);
+            this.btnF8NoAlarmC8Single.Name = "btnF8NoAlarmC8Single";
+            this.btnF8NoAlarmC8Single.Size = new System.Drawing.Size(108, 48);
+            this.btnF8NoAlarmC8Single.TabIndex = 12;
+            this.btnF8NoAlarmC8Single.Text = "F8无报警";
+            this.btnF8NoAlarmC8Single.UseVisualStyleBackColor = true;
+            this.btnF8NoAlarmC8Single.Click += new System.EventHandler(this.btnF8NoAlarmC8Single_Click);
+            // 
+            // btnF8DelepeC8Single
+            // 
+            this.btnF8DelepeC8Single.Location = new System.Drawing.Point(209, 169);
+            this.btnF8DelepeC8Single.Name = "btnF8DelepeC8Single";
+            this.btnF8DelepeC8Single.Size = new System.Drawing.Size(108, 48);
+            this.btnF8DelepeC8Single.TabIndex = 13;
+            this.btnF8DelepeC8Single.Text = "F8耗尽电报警";
+            this.btnF8DelepeC8Single.UseVisualStyleBackColor = true;
+            this.btnF8DelepeC8Single.Click += new System.EventHandler(this.btnF8DelepeC8Single_Click);
             // 
             // MainForm
             // 
@@ -715,6 +811,7 @@
             this.tabPage1.ResumeLayout(false);
             this.tabPage2.ResumeLayout(false);
             this.tabPage3.ResumeLayout(false);
+            this.tabPage4.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -779,6 +876,14 @@
         private System.Windows.Forms.Button btnF6DelepeC6Single;
         private System.Windows.Forms.ComboBox cbPumpType;
         private System.Windows.Forms.Button btnSetPump;
+        private System.Windows.Forms.TabPage tabPage4;
+        private System.Windows.Forms.Button button1;
+        private System.Windows.Forms.Button btnF8StopAll;
+        private System.Windows.Forms.Button btnF8ResponsePumpType;
+        private System.Windows.Forms.Button btnF8LowAlarmSingle;
+        private System.Windows.Forms.Button btnF8LowVolC8Single;
+        private System.Windows.Forms.Button btnF8NoAlarmC8Single;
+        private System.Windows.Forms.Button btnF8DelepeC8Single;
     }
 }
 

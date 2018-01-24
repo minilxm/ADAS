@@ -47,7 +47,7 @@ namespace  AgingSystem
         private System.Timers.Timer   m_ChargeTimer        = new System.Timers.Timer();                  //充电时钟
         private System.Timers.Timer   m_RechargeTimer      = new System.Timers.Timer();                  //放电电时钟
         private Hashtable             m_DockParameter      = new Hashtable();                            //存放每个货架的配置信息（int 货架号，AgingParameter）
-        private Hashtable             m_HashPumps          = new Hashtable();                            //单个货架上的选中的泵位置信息列表<DockNO, List<Tuple<int,int,int>>(int pumpLocation,int rowNo,int colNo )
+        private Hashtable             m_HashPumps          = new Hashtable();                            //单个货架上的选中的泵位置信息列表<DockNO, List<Tuple<int,int,int,string>>(int pumpLocation,int rowNo,int colNo,serialNo )
         private Hashtable             m_HashRowNo          = new Hashtable();                            //单个货架上的选中的泵通道编号，即一个控制器有命令中的通道编号（int 行号,int 通道号位计算）
         private CommandManage         m_CmdManager         = new CommandManage();                        //发送命令对象，通过它来发送所有命令
         private AutoResetEvent        m_EventSendPumpType  = new AutoResetEvent(false);                  //发送CmdSendPumpType命令事件
@@ -72,6 +72,7 @@ namespace  AgingSystem
         private bool                  m_bKeepCheckPumpStopStatus = false;                                //用于检查停止后，泵有没有停止
         private bool                  m_bCanStartCheck              = false;                             //是否可以启动检查线程
         private ProductID             m_CurrentProductID            = ProductID.Unknow;
+        private CustomProductID       m_CurrentCustomProductID = CustomProductID.Unknow;
         private ushort                m_QueryInterval               = 60;
         private System.Timers.Timer   m_CheckPumpStatusTimer        = new System.Timers.Timer();         //设置检查泵状态持续时钟，主要用于计时，超时将置一个状态
         private System.Timers.Timer   m_CheckPumpStopStatusTimer        = new System.Timers.Timer();     //设置检查泵停止状态持续时钟，主要用于计时，超时将置一个状态
@@ -93,7 +94,14 @@ namespace  AgingSystem
 
         private DateTime m_LastRechargeTime = DateTime.MinValue;                                //货架上最后一个补电开始时间
 
-
+        /// <summary>
+        /// 老化架上的控制器列表
+        /// </summary>
+        public List<Controller> Controllers
+        {
+            get { return m_Controllers; }
+            set { m_Controllers = value; }
+        }
 
         /// <summary>
         /// 货架号
@@ -515,22 +523,33 @@ namespace  AgingSystem
                         //每次都要重新统计已经结束的数量
                         if (pump != null && pump.BeginBattaryDepleteTime.Year > 2000 && pump.BeginRechargeTime.Year > 2000 && pump.EndAgingTime.Year > 2000)
                         {
-                            if (this.m_CurrentProductID == ProductID.GrasebyF6)
+                            if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double || m_CurrentCustomProductID == CustomProductID.WZS50F6_Double)
                             {
-                                if(pump.Channel%2==1)
+                                if (pump.Channel % 2 == 1)
                                 {
                                     completeCount++;
                                 }
-                            } 
+                            }
+                            else if (m_CurrentCustomProductID == CustomProductID.GrasebyF8)
+                            {
+                                if (pump.SubChannel==0)
+                                {
+                                    completeCount++;
+                                }
+                            }
                             else
                                 completeCount++;
-                            if (this.m_CurrentProductID == ProductID.GrasebyF6)
+                            if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double || m_CurrentCustomProductID == CustomProductID.WZS50F6_Double)
                             {
-                                this.Dispatcher.BeginInvoke(new DeleUpdateCompleteCount(UpdateCompleteCount), new object[] { completeCount, ((List<Tuple<int, int, int>>)m_HashPumps[m_DockNo]).Count/2 });
+                                this.Dispatcher.BeginInvoke(new DeleUpdateCompleteCount(UpdateCompleteCount), new object[] { completeCount, ((List<Tuple<int, int, int, string>>)m_HashPumps[m_DockNo]).Count / 2 });
+                            }
+                            else if (m_CurrentCustomProductID == CustomProductID.GrasebyF8)
+                            {
+                                this.Dispatcher.BeginInvoke(new DeleUpdateCompleteCount(UpdateCompleteCount), new object[] { completeCount, ((List<Tuple<int, int, int, string>>)m_HashPumps[m_DockNo]).Count });
                             }
                             else
                             {
-                                this.Dispatcher.BeginInvoke(new DeleUpdateCompleteCount(UpdateCompleteCount), new object[] { completeCount, ((List<Tuple<int, int, int>>)m_HashPumps[m_DockNo]).Count });
+                                this.Dispatcher.BeginInvoke(new DeleUpdateCompleteCount(UpdateCompleteCount), new object[] { completeCount, ((List<Tuple<int, int, int, string>>)m_HashPumps[m_DockNo]).Count });
                             }
                         }
                     }
@@ -728,10 +747,15 @@ namespace  AgingSystem
             }
             AgingParameter para = m_DockParameter[m_DockNo] as AgingParameter;
             ProductID pid = ProductID.Unknow;
+            CustomProductID cid = CustomProductID.Unknow;
             if (para != null)
             {
-                if (Enum.IsDefined(typeof(ProductID), para.PumpType))
-                    pid = (ProductID)Enum.Parse(typeof(ProductID), para.PumpType);
+                //自从添加了双道泵之后，需要先将泵类型转换成CustomProductID，然后再转成对应的ProductID
+                cid = ProductIDConvertor.Name2CustomProductID(para.PumpType);
+                if (cid != CustomProductID.Unknow)
+                {
+                    pid = ProductIDConvertor.Custom2ProductID(cid);
+                }
                 else
                 {
                     Logger.Instance().ErrorFormat("OnStartClick()->para.PumpType is not defined! para.PumpType={0}", para.PumpType);
@@ -751,7 +775,7 @@ namespace  AgingSystem
                 //MessageBox.Show("配置文件出错，未检测到相关货架的配置文件！");
                 return false;
             }
-            List<Tuple<int, int, int>> selectedPumps = m_HashPumps[m_DockNo] as List<Tuple<int, int, int>>;
+            List<Tuple<int, int, int, string>> selectedPumps = m_HashPumps[m_DockNo] as List<Tuple<int, int, int, string>>;
             if (selectedPumps == null || selectedPumps.Count <= 0)
             {
                 //MessageBox.Show("请选择需要老化的泵！");
@@ -814,10 +838,15 @@ namespace  AgingSystem
             }
             AgingParameter para = m_DockParameter[m_DockNo] as AgingParameter;
             ProductID pid = ProductID.Unknow;
+            CustomProductID cid = CustomProductID.Unknow;
             if (para != null)
             {
-                if (Enum.IsDefined(typeof(ProductID), para.PumpType))
-                    pid = (ProductID)Enum.Parse(typeof(ProductID), para.PumpType);
+                //自从添加了双道泵之后，需要先将泵类型转换成CustomProductID，然后再转成对应的ProductID
+                cid = ProductIDConvertor.Name2CustomProductID(para.PumpType);
+                if (cid != CustomProductID.Unknow)
+                {
+                    pid = ProductIDConvertor.Custom2ProductID(cid);
+                }
                 else
                 {
                     Logger.Instance().ErrorFormat("OnStartClick()->para.PumpType is not defined! para.PumpType={0}", para.PumpType);
@@ -837,7 +866,7 @@ namespace  AgingSystem
                 MessageBox.Show("配置文件出错，未检测到相关货架的配置文件！");
                 return;
             }
-            List<Tuple<int, int, int>> selectedPumps = m_HashPumps[m_DockNo] as List<Tuple<int, int, int>>;
+            List<Tuple<int, int, int, string>> selectedPumps = m_HashPumps[m_DockNo] as List<Tuple<int, int, int, string>>;
             if (selectedPumps == null || selectedPumps.Count <= 0)
             {
                 MessageBox.Show("请选择需要老化的泵！");
@@ -1073,23 +1102,24 @@ namespace  AgingSystem
                         OnConfigrationCompleted(this, new ConfigrationArgs(m_DockParameter));
                     AgingParameter para = m_DockParameter[m_DockNo] as AgingParameter;
                     lbPumpType.Content = "泵型号:" + para.PumpType;
-                    if (Enum.IsDefined(typeof(ProductID), para.PumpType))
-                        m_CurrentProductID = (ProductID)Enum.Parse(typeof(ProductID), para.PumpType);
+                    //先将自定义类型的泵转成真正的ProductID
+                    m_CurrentCustomProductID = ProductIDConvertor.Name2CustomProductID(para.PumpType);
+                    m_CurrentProductID = ProductIDConvertor.Custom2ProductID(m_CurrentCustomProductID);
                 }
                 if (OnPumpSelected != null)
                 {
                     OnPumpSelected(this, new SelectedPumpsArgs(m_HashPumps));
                     string strTemp = string.Empty;
                     string strCompleteTemp = string.Empty;
-                    if (m_CurrentProductID == ProductID.GrasebyF6)
+                    if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double) //双道F6与单道F6要分开处理
                     {
-                        strTemp = string.Format("泵数量:{0}/{1}", ((List<Tuple<int, int, int>>)m_HashPumps[dockNo]).Count / 2, DockInfoManager.Instance().Get(dockNo) / 2);
-                        strCompleteTemp = string.Format("完成数量:{0}/{1}", 0, ((List<Tuple<int, int, int>>)m_HashPumps[dockNo]).Count/2);
+                        strTemp = string.Format("泵数量:{0}/{1}", ((List<Tuple<int, int, int,string>>)m_HashPumps[dockNo]).Count / 2, DockInfoManager.Instance().Get(dockNo) / 2);
+                        strCompleteTemp = string.Format("完成数量:{0}/{1}", 0, ((List<Tuple<int, int, int, string>>)m_HashPumps[dockNo]).Count / 2);
                     }
                     else
                     {
-                        strTemp = string.Format("泵数量:{0}/{1}", ((List<Tuple<int, int, int>>)m_HashPumps[dockNo]).Count, DockInfoManager.Instance().Get(dockNo));
-                        strCompleteTemp = string.Format("完成数量:{0}/{1}", 0, ((List<Tuple<int, int, int>>)m_HashPumps[dockNo]).Count);
+                        strTemp = string.Format("泵数量:{0}/{1}", ((List<Tuple<int, int, int, string>>)m_HashPumps[dockNo]).Count, DockInfoManager.Instance().Get(dockNo));
+                        strCompleteTemp = string.Format("完成数量:{0}/{1}", 0, ((List<Tuple<int, int, int, string>>)m_HashPumps[dockNo]).Count);
                     }
                     lbPumpCount.Content = strTemp;
                     lbCompleteCount.Content = strCompleteTemp;
@@ -1105,7 +1135,7 @@ namespace  AgingSystem
         {
             if(m_DockParameter[m_DockNo]==null || m_HashPumps[m_DockNo]==null)
                 return;
-            if(((List<Tuple<int,int,int>>)m_HashPumps[m_DockNo]).Count==0)
+            if(((List<Tuple<int,int,int,string>>)m_HashPumps[m_DockNo]).Count==0)
                 return;
             int dockNo = 0;
             if (Int32.TryParse(Tag.ToString(), out dockNo))
@@ -1115,7 +1145,7 @@ namespace  AgingSystem
                 {
                     agingPumps.AddRange(m_Controllers[i].AgingPumpList);
                 }
-                DetailList detailList = new  DetailList(m_DockNo, (AgingParameter)m_DockParameter[m_DockNo], (List<Tuple<int,int,int>>)m_HashPumps[m_DockNo], agingPumps);
+                DetailList detailList = new DetailList(m_DockNo, (AgingParameter)m_DockParameter[m_DockNo], (List<Tuple<int, int, int, string>>)m_HashPumps[m_DockNo], agingPumps);
                 detailList.ShowDialog();
                 detailList = null;
                 GC.Collect();
@@ -1127,136 +1157,6 @@ namespace  AgingSystem
         }
         #endregion
 
-        #region 群发送命令函数
-        private void SendSendPumpTypeCommand(CmdSendPumpType cmd)
-        {
-            AgingParameter para = m_DockParameter[m_DockNo] as AgingParameter;
-            ProductID pid = ProductID.Unknow;
-            if (para != null)
-            {
-                if (Enum.IsDefined(typeof(ProductID), para.PumpType))
-                    pid = (ProductID)Enum.Parse(typeof(ProductID), para.PumpType);
-                else
-                {
-                    Logger.Instance().ErrorFormat("SendSendPumpTypeCommand()->para.PumpType is not defined! para.PumpType={0}", para.PumpType);
-                    MessageBox.Show("泵型号出错，非法的泵类型!");
-                    return;
-                }
-            }
-            else
-            {
-                Logger.Instance().Debug("SendSendPumpTypeCommand()->AgingParameter is null");
-                MessageBox.Show("开始前先配置老化参数!");
-                return;
-            }
-            List<Controller> controller = ControllerManager.Instance().Get(m_DockNo);
-            if (controller.Count <= 0)
-            {
-                MessageBox.Show("配置文件出错，未检测到相关货架的配置文件！");
-                return;
-            }
-             //找出那些已经连接的SOCKET
-            List<Controller> ipMap = controller.FindAll((x) => { return x.SocketToken != null; });
-            if (ipMap != null && ipMap.Count > 0)
-            {
-                #region//在开始老化之前，要给每个WIFI模块发送一条指令，声明它所连接的泵型号,待这个命令有回应之后才能进行下一步操作
-                Controller currentObj = null, preObj = null;
-                m_EventSendPumpType.Set();//先设置有信号状态
-                for (int i = 0; i < ipMap.Count; i++)
-                {
-                    currentObj = ipMap[i];
-                    if (m_EventSendPumpType.WaitOne(m_TimeOut))//等待3秒，如果前一条命令没有返回就不用发了
-                    {
-                        m_CmdManager.SendPumpType(pid, (ushort)DockWindow.m_QueryInterval, currentObj.SocketToken, CommandResponse, CommandTimeoutResponse, (byte)m_HashRowNo[currentObj.RowNo]);
-                        preObj = currentObj;
-                    }
-                    else
-                    {
-                        if (preObj != null)
-                        {
-                            string msg = string.Format("{0}号货架第{1}层控制器无响应，请排除故障后重新开始！", preObj.DockNo, preObj.RowNo);
-                            Logger.Instance().Error(msg);
-                            return;
-                        }
-                    }
-                }
-                #endregion
-            }
-
-        }
-
-        private void SendCmdDischarge()
-        {
-            AgingParameter para = m_DockParameter[m_DockNo] as AgingParameter;
-            ProductID pid = ProductID.Unknow;
-            if (para != null)
-            {
-                if (Enum.IsDefined(typeof(ProductID), para.PumpType))
-                    pid = (ProductID)Enum.Parse(typeof(ProductID), para.PumpType);
-                else
-                {
-                    Logger.Instance().ErrorFormat("SendSendPumpTypeCommand()->para.PumpType is not defined! para.PumpType={0}", para.PumpType);
-                    MessageBox.Show("泵型号出错，非法的泵类型!");
-                    return;
-                }
-            }
-            else
-            {
-                Logger.Instance().Debug("SendSendPumpTypeCommand()->AgingParameter is null");
-                MessageBox.Show("开始前先配置老化参数!");
-                return;
-            }
-            List<Controller> controller = ControllerManager.Instance().Get(m_DockNo);
-            if (controller.Count <= 0)
-            {
-                MessageBox.Show("配置文件出错，未检测到相关货架的配置文件！");
-                return;
-            }
-             //找出那些已经连接的SOCKET
-            List<Controller> ipMap = controller.FindAll((x) => { return x.SocketToken != null;});
-            if (ipMap != null && ipMap.Count > 0)
-            {
-                #region//在开始老化之前，要给每个WIFI模块发送一条指令，声明它所连接的泵型号,待这个命令有回应之后才能进行下一步操作
-                Controller currentObj = null, preObj = null;
-                m_EventCmdDischarge.Set();//先设置有信号状态
-                for (int i = 0; i < ipMap.Count; i++)
-                {
-                    currentObj = ipMap[i];
-                    if (m_EventCmdDischarge.WaitOne(m_TimeOut))//等待3秒，如果前一条命令没有返回就不用发了
-                    {
-                        m_CmdManager.SendCmdDischarge(currentObj.SocketToken, CommandResponse, CommandTimeoutResponse);
-                        preObj = currentObj;
-                    }
-                    else
-                    {
-                        if (preObj != null)
-                        {
-                            string msg = string.Format("{0}号货架第{1}层控制器CmdDischarge无响应，请排除故障后重新开始！", preObj.DockNo, preObj.RowNo);
-                            Logger.Instance().Error(msg);
-                            return;
-                        }
-                    }
-                }
-                //等待最后的返回
-                if(m_EventCmdDischarge.WaitOne(m_TimeOut))
-                {
-                    Logger.Instance().Info("发送CmdDischarge命令全部收到回应！");
-                    
-                }
-                else
-                {
-                    if (preObj != null)
-                    {
-                        string msg = string.Format("{0}号货架第{1}层控制器无法响应放电命令，请排除故障后重新开始！", preObj.DockNo, preObj.RowNo);
-                        Logger.Instance().Error(msg);
-                        return;
-                    }
-                }
-                #endregion
-            }
-
-        }
-        #endregion
 
         private void EnableControls(bool bEnabled = false)
         {
@@ -1347,14 +1247,8 @@ namespace  AgingSystem
                 Logger.Instance().InfoFormat("收到货架编号为{0},第{1}行控制器上报信息,数据包数量={2},通道编号={3}", dockNo, rowNo, count, sb.ToString().TrimEnd(','));
                 AgingPump info = null;
                 AgingParameter para = m_DockParameter[dockNo] as AgingParameter;
-                ProductID pid = ProductID.Unknow;
-                if (Enum.IsDefined(typeof(ProductID), para.PumpType))
-                    pid = (ProductID)Enum.Parse(typeof(ProductID), para.PumpType);
-                else
-                {
-                    Logger.Instance().ErrorFormat("泵类型转换出错，不支持的类型 PumpType ={0}", para.PumpType);
-                    return;
-                }
+                CustomProductID cid = ProductIDConvertor.Name2CustomProductID(para.PumpType);
+                ProductID pid = ProductIDConvertor.Custom2ProductID(cid);
                 Hashtable alarmMetrix = null;
                 uint depletealArmIndex = 0, lowVolArmIndex = 0;//耗尽和低电压索引
                 #region //查询耗尽报警索引
@@ -1443,10 +1337,26 @@ namespace  AgingSystem
                 }
                 #endregion
 
-                //循环6个报警包,32个报警，查询太费时间
+                //循环6或12个报警包,32个报警，查询太费时间
+                byte packageChanel = 0, subChanel = 0;
                 for (int i = 0; i < count; i++)
                 {
-                    info = controller.FindPump(dockNo, rowNo, (byte)(cmd.PumpPackages[i].Chanel & 0x000F));
+                    if (pid == ProductID.GrasebyF8)
+                    {
+                        packageChanel = (byte)(cmd.PumpPackages[i].Chanel & 0x0F);
+                        subChanel = (byte)(cmd.PumpPackages[i].Chanel & 0xF0);
+                        //双道通道号存在高4位
+                        if (subChanel==0x10)
+                            subChanel = 0; //1号通道编号为0
+                        else if (subChanel == 0x20)
+                            subChanel = 1;//2号通道编号为1
+                        else
+                            subChanel = 0;
+                        info = controller.FindPump(dockNo, rowNo, packageChanel, subChanel);
+                    }
+                    else
+                        info = controller.FindPump(dockNo, rowNo, (byte)(cmd.PumpPackages[i].Chanel & 0x000F));
+
                     if (info != null)
                     {
                         if (info.AgingStatus == EAgingStatus.AgingComplete)
@@ -1473,15 +1383,19 @@ namespace  AgingSystem
                             //channel = (byte)(channel << (info.Channel - 1));
                             //此处的通道号是报警信息包中的通道号，并不是按位定义的,出现报警信息后，要加入此队列,add by 20170708
                             //此处的Channel不是按位存储的，是1，2，3，4，5，6，7，8等自然数,如果是偶数（2道泵），则不必加入到已耗尽队列中去
-                            if (m_CurrentProductID== ProductID.GrasebyF6 )
+                            if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double || m_CurrentCustomProductID == CustomProductID.WZS50F6_Double)
                             {
                                 if (info.Channel % 2 == 1)
                                     m_DepleteManager.UpdateDepleteInfo(cmd.RemoteSocket.IP, info.Channel);
                             }
-                            else
+                            else if (m_CurrentCustomProductID == CustomProductID.GrasebyF8)
                             {
-                                m_DepleteManager.UpdateDepleteInfo(cmd.RemoteSocket.IP, info.Channel);
+                                if (info.SubChannel==0)
+                                    m_DepleteManager.UpdateDepleteInfo(cmd.RemoteSocket.IP, info.Channel);
                             }
+                            else
+                                m_DepleteManager.UpdateDepleteInfo(cmd.RemoteSocket.IP, info.Channel);
+
                             //启动老化补电时钟
                             OnRechargePump();
                             //m_CmdManager.SendCmdRecharge(channel, cmd.RemoteSocket, null);
@@ -1518,7 +1432,19 @@ namespace  AgingSystem
                         AgingPump newInfo = new AgingPump();
                         newInfo.DockNo = dockNo;
                         newInfo.RowNo = rowNo;
-                        newInfo.Channel = (byte)(cmd.PumpPackages[i].Chanel & 0x0000000F);//此处是通道号的定义
+                        newInfo.Channel = (byte)(cmd.PumpPackages[i].Chanel & 0x0F);//此处是通道号的定义
+                        if (pid == ProductID.GrasebyF8)
+                        {
+                            subChanel = (byte)(cmd.PumpPackages[i].Chanel & 0xF0);
+                            //双道通道号存在高4位
+                            if (subChanel == 0x10)
+                                subChanel = 0; //1号通道编号为0
+                            else if (subChanel == 0x20)
+                                subChanel = 1;//2号通道编号为1
+                            else
+                                subChanel = 0;
+                            newInfo.SubChannel = subChanel;
+                        }
                         newInfo.BeginAgingTime = controller.BeginAginTime;
                         //放电时间一开始保存在控制器对象中，由于报警一时上不来，查看详细看不到放电消息
                         if (newInfo.BeginDischargeTime.Year < 2000)
@@ -1538,10 +1464,15 @@ namespace  AgingSystem
                             channel = (byte)(channel << (newInfo.Channel - 1));
                             //此处的通道号是报警信息包中的通道号，并不是按位定义的,出现报警信息后，要加入此队列add by 20170708
                             //此处的Channel不是按位存储的，是1，2，3，4，5，6，7，8等自然数,如果是偶数（2道泵），则不必加入到已耗尽队列中去
-                            if (m_CurrentProductID == ProductID.GrasebyF6)
+                            if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double || m_CurrentCustomProductID == CustomProductID.WZS50F6_Double)
                             {
                                 if (info.Channel % 2 == 1)
                                     m_DepleteManager.UpdateDepleteInfo(cmd.RemoteSocket.IP, newInfo.Channel);
+                            }
+                            else if (m_CurrentCustomProductID == CustomProductID.GrasebyF8)
+                            {
+                                if (info.SubChannel == 0)
+                                    m_DepleteManager.UpdateDepleteInfo(cmd.RemoteSocket.IP, info.Channel);
                             }
                             else
                             {
@@ -1623,9 +1554,14 @@ namespace  AgingSystem
                     for (int j = 0; j < m_Controllers[i].AgingPumpList.Count; j++)
                     {
                         //F6不要判断2道泵
-                        if(m_CurrentProductID==ProductID.GrasebyF6)
+                        if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double || m_CurrentCustomProductID == CustomProductID.WZS50F6_Double)
                         {
                             if (m_Controllers[i].AgingPumpList[j].Channel % 2 == 0)
+                                continue;
+                        }
+                        if (m_CurrentCustomProductID == CustomProductID.GrasebyF8)
+                        {
+                            if (m_Controllers[i].AgingPumpList[j].SubChannel == 1)
                                 continue;
                         }
                         //泵已经进行了补电
@@ -1704,7 +1640,7 @@ namespace  AgingSystem
         /// <returns></returns>
         private void GenChannel()
         {
-            List<Tuple<int,int,int>> pumpLocationList = m_HashPumps[m_DockNo] as List<Tuple<int,int,int>>;
+            List<Tuple<int, int, int, string>> pumpLocationList = m_HashPumps[m_DockNo] as List<Tuple<int, int, int, string>>;
             if(pumpLocationList==null)
             {
                 Logger.Instance().ErrorFormat("配置信息错误，相应的货架编号没有选择相应的泵,DockNo={0}",m_DockNo);
@@ -1729,9 +1665,11 @@ namespace  AgingSystem
 
         public void ExportExcel(string fileName)
         {
+            #region 创建文件夹
+            string excelDir = "老化结果\\";
             string saveFileName = System.IO.Path.GetDirectoryName( System.Reflection.Assembly.GetAssembly(typeof(DockWindow)).Location);
-            string dirName = saveFileName + "\\" + DateTime.Now.ToString("yyyy-MM-dd");
-            string dockName = dirName + "\\" + this.m_DockNo.ToString()+"号货架";
+            string dirName = saveFileName + "\\" + excelDir + DateTime.Now.ToString("yyyy-MM-dd");
+            string dockName = dirName + "\\" + this.m_DockNo.ToString() + "号货架";
             if(!Directory.Exists(dirName))
             {
                 Directory.CreateDirectory(dirName);
@@ -1742,8 +1680,30 @@ namespace  AgingSystem
             }
             saveFileName = dockName + "\\" + fileName;
             if (String.IsNullOrEmpty(saveFileName.Trim()))
+                return; 
+            //生成一份做备份
+            string excelDirBackup = "老化结果备份\\";
+            string saveFileNameBackup = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetAssembly(typeof(DockWindow)).Location);
+            string dirNameBackup = saveFileNameBackup + "\\" + excelDirBackup + DateTime.Now.ToString("yyyy-MM-dd");
+            string dockNameBackup = dirNameBackup + "\\" + this.m_DockNo.ToString() + "号货架";
+            if (!Directory.Exists(dirNameBackup))
+            {
+                Directory.CreateDirectory(dirNameBackup);
+            }
+            if (!Directory.Exists(dockNameBackup))
+            {
+                Directory.CreateDirectory(dockNameBackup);
+            }
+            saveFileNameBackup = dockNameBackup + "\\" + fileName;
+            if (String.IsNullOrEmpty(saveFileNameBackup.Trim()))
                 return; //No name
-         
+            #endregion
+
+            #region 创建表头
+
+            //选中的泵列表
+            List<Tuple<int, int, int, string>> selectedPumps = m_HashPumps[m_DockNo] as List<Tuple<int, int, int, string>>;
+            //老化参数
             AgingParameter parameter = m_DockParameter[m_DockNo] as AgingParameter;
             int columns = DockInfoManager.Instance().Get(m_DockNo)/5;
             Excel.Application xlApp = new Excel.Application();
@@ -1767,15 +1727,15 @@ namespace  AgingSystem
             worksheet.Cells[1, ++index] = "放电开始";
             worksheet.Cells[1, ++index] = "低电压";
             worksheet.Cells[1, ++index] = "电池耗尽";
-            worksheet.Cells[1, ++index] = "老化结束";
-            worksheet.Cells[1, ++index] = "老化时长(h)";
-            worksheet.Cells[1, ++index] = "放电总时间(h)";
-            worksheet.Cells[1, ++index] = "耗尽时长(h)";
+            worksheet.Cells[1, ++index] = "补电时长(min)";
+            worksheet.Cells[1, ++index] = "老化时长(min)";
+            worksheet.Cells[1, ++index] = "放电总时间(min)";
+            worksheet.Cells[1, ++index] = "低电时长(min)";
+            worksheet.Cells[1, ++index] = "耗尽时长(min)";
+            worksheet.Cells[1, ++index] = "放电结果";
             worksheet.Cells[1, ++index] = "老化结果";
             worksheet.Cells[1, ++index] = "报警";
-            //单道：总放电时间大于4.2h，欠压报警时间＞0.5h，放电开始2h内无欠压报警；
-            //双道：总放电时间大于3.2h，欠压报警时间＞0.5h，放电开始2h内无欠压报警；            
-            worksheet.Cells[1, ++index] = "电池老化";
+            #endregion 
 
             int rowIndex = 2;
             List<Controller> contorllerList = m_Controllers.OrderBy(x=>x.DockNo).ToList<Controller>();
@@ -1783,103 +1743,334 @@ namespace  AgingSystem
             {
                 if(contorllerList[i]!=null)
                 {
+                    //老化上传的报警信息初始化pumpList，所以F8上传的泵信息是两份。
                     List<AgingPump> pumpList = contorllerList[i].SortAgingPumpList();
                     for(int j=0;j<pumpList.Count;j++)
                     {
                         if(pumpList[j]!=null)
                         {
-                            index = 0;
-                            worksheet.Cells[rowIndex, ++index] = rowIndex-1;
-                            if(m_CurrentProductID==ProductID.GrasebyF6)
+                            if (m_CurrentCustomProductID == CustomProductID.GrasebyF8)
                             {
-                                if (pumpList[j].Channel%2==1)
-                                    worksheet.Cells[rowIndex, ++index] = string.Format("{0}—{1}—{2}(1道泵)", m_DockNo, pumpList[j].RowNo, pumpList[j].Channel);
-                                else
-                                    worksheet.Cells[rowIndex, ++index] = string.Format("{0}—{1}—{2}(2道泵)", m_DockNo, pumpList[j].RowNo, pumpList[j].Channel);
-                            }
-                            else
-                                worksheet.Cells[rowIndex, ++index] = string.Format("{0}—{1}—{2}", m_DockNo, pumpList[j].RowNo, pumpList[j].Channel);
-                            worksheet.Cells[rowIndex, ++index] = pumpList[j].PumpType;
-                            worksheet.Cells[rowIndex, ++index] = "";
-                            if(parameter!=null)
-                                worksheet.Cells[rowIndex, ++index] = parameter.Rate.ToString();
-                            if(pumpList[j].BeginAgingTime.Year>2000
-                                && pumpList[j].BeginDischargeTime.Year>2000
-                                && pumpList[j].BeginLowVoltageTime.Year>2000
-                                && pumpList[j].BeginBattaryDepleteTime.Year>2000
-                                && pumpList[j].EndAgingTime.Year>2000
-                                )
-                            {
-                                worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginAgingTime.ToString("yyyy-MM-dd HH:mm:ss");
-                                worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginDischargeTime.ToString("yyyy-MM-dd HH:mm:ss");
-                                worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginLowVoltageTime.ToString("yyyy-MM-dd HH:mm:ss");
-                                worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginBattaryDepleteTime.ToString("yyyy-MM-dd HH:mm:ss");
-                                worksheet.Cells[rowIndex, ++index] = pumpList[j].EndAgingTime.ToString("yyyy-MM-dd HH:mm:ss");
-                                worksheet.Cells[rowIndex, ++index] = (pumpList[j].EndAgingTime-pumpList[j].BeginAgingTime).TotalHours.ToString("F2");
-                                worksheet.Cells[rowIndex, ++index] = (pumpList[j].BeginBattaryDepleteTime-pumpList[j].BeginDischargeTime).TotalHours.ToString("F2");//耗尽－开始
-                                worksheet.Cells[rowIndex, ++index] = (pumpList[j].BeginBattaryDepleteTime-pumpList[j].BeginLowVoltageTime).TotalHours.ToString("F2");//耗尽－低电
-                                bool bPass = pumpList[j].IsPass();
-                                worksheet.Cells[rowIndex, ++index] = bPass==true?"通过":"失败";
-                                //worksheet.Cells[rowIndex, ++index] = pumpList[j].GetAlarmString();
-                                //每个报警第一次发生的时间需要记录
-                                worksheet.Cells[rowIndex, ++index] = pumpList[j].GetAlarmStringAndOcurredTime();
-                                //电池老化是否合格
-                                if(m_CurrentProductID==ProductID.GrasebyF6 || m_CurrentProductID==ProductID.GrasebyF8)
+                                #region GrasebyF8
+                                index = 0;
+
+                                //F8双道泵不用记录第二道，两道合一起,基本信息取自第一道泵
+                                if (pumpList[j].SubChannel == 0)
                                 {
-                                    if((pumpList[j].BeginBattaryDepleteTime-pumpList[j].BeginDischargeTime).TotalHours> 3.2 
-                                        && (pumpList[j].BeginBattaryDepleteTime-pumpList[j].BeginLowVoltageTime).TotalMinutes>30
-                                        && (pumpList[j].BeginLowVoltageTime-pumpList[j].BeginDischargeTime).TotalMinutes>120)
+                                    worksheet.Cells[rowIndex, ++index] = rowIndex - 1;
+                                    worksheet.Cells[rowIndex, ++index] = string.Format("{0}—{1}—{2}", m_DockNo, pumpList[j].RowNo, pumpList[j].Channel);
+                                    worksheet.Cells[rowIndex, ++index] = pumpList[j].PumpType;//型号
+
+                                    //根据机器的行号和列号寻找泵的位置信息
+                                    if (selectedPumps != null)
                                     {
-                                        worksheet.Cells[rowIndex, ++index] = "合格";
+                                        Tuple<int, int, int, string> location = selectedPumps.Find((x) => { return x.Item2 == pumpList[j].RowNo && x.Item3 == pumpList[j].Channel; });
+                                        if (location != null)
+                                            worksheet.Cells[rowIndex, ++index] = location.Item4;//机器编号
+                                        else
+                                            worksheet.Cells[rowIndex, ++index] = "";//机器编号
+                                    }
+                                    else
+                                        worksheet.Cells[rowIndex, ++index] = "";//机器编号
+
+                                    if (parameter != null)
+                                        worksheet.Cells[rowIndex, ++index] = parameter.Rate.ToString();//速率
+                                    if (pumpList[j].BeginAgingTime.Year > 2000
+                                        && pumpList[j].BeginDischargeTime.Year > 2000
+                                        && pumpList[j].BeginLowVoltageTime.Year > 2000
+                                        && pumpList[j].BeginBattaryDepleteTime.Year > 2000
+                                        && pumpList[j].EndAgingTime.Year > 2000
+                                        )
+                                    {
+                                        #region 老化时间、低电、耗尽等时间都正常
+                                        worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginAgingTime.ToString("yyyy-MM-dd HH:mm:ss");                                         //老化开始
+                                        worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginDischargeTime.ToString("yyyy-MM-dd HH:mm:ss");                                     //放电开始
+                                        worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginLowVoltageTime.ToString("yyyy-MM-dd HH:mm:ss");                                    //低电压
+                                        worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginBattaryDepleteTime.ToString("yyyy-MM-dd HH:mm:ss");                                //电池耗尽
+                                        worksheet.Cells[rowIndex, ++index] = (parameter.RechargeTime * 60).ToString("F1");                                                       //补电时长(min)=系统设置的补电时长
+                                        worksheet.Cells[rowIndex, ++index] = (pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginAgingTime).TotalMinutes.ToString("F1");     //老化时长(min)=老化开始至电池耗尽的时长
+                                        worksheet.Cells[rowIndex, ++index] = (pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginDischargeTime).TotalMinutes.ToString("F1"); //放电总时间(min)=放电开始至电池耗尽的时长
+                                        worksheet.Cells[rowIndex, ++index] = (pumpList[j].BeginLowVoltageTime - pumpList[j].BeginDischargeTime).TotalMinutes.ToString("F1");     //低电时长(min)=放电开始至电池低电压的时长
+                                        worksheet.Cells[rowIndex, ++index] = (pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginLowVoltageTime).TotalMinutes.ToString("F1");//耗尽时长(min)=耗尽－低电
+                                        bool bPass = pumpList[j].IsPass();//F8需要两道泵同时通过，这里需要再判断另一道 
+                                        bool bPass2 = true;
+                                        string strSecondPumpAlarm = string.Empty;
+                                        //不要超过索引范围
+                                        if(j+1<pumpList.Count)
+                                        {
+                                            //第二道泵索引一定在第一道后一位
+                                            if(pumpList[j+1]!=null)
+                                            {
+                                                if (pumpList[j + 1].RowNo == pumpList[j].RowNo && pumpList[j + 1].Channel == pumpList[j].Channel && pumpList[j + 1].SubChannel == 1)
+                                                {
+                                                    bPass2 = pumpList[j + 1].IsPass();
+                                                    //第二道泵的报警
+                                                    strSecondPumpAlarm = pumpList[j+1].GetAlarmStringAndOcurredTime();                                                          //报警:带记录第一次发生时间
+                                                }
+                                            }
+                                        }
+                                        #region//F8电池老化是否合格
+                                        //最新放电标准
+                                        //• Graseby F8
+                                        //耗尽时间≥30min，放电至欠压报警(低电压时间)≥4.75H，总放电时间（放电至欠压报警时间）≥5.5H 
+                                        bool isBatteryOK = true;
+                                        switch (m_CurrentCustomProductID)
+                                        {
+                                            case CustomProductID.GrasebyF8:
+                                                if ((pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginDischargeTime).TotalHours >= 5.5 /*总放电时间*/
+                                                && (pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginLowVoltageTime).TotalMinutes >= 30 /*耗尽时间*/
+                                                && (pumpList[j].BeginLowVoltageTime - pumpList[j].BeginDischargeTime).TotalMinutes >= 285) /*低电压时间*/
+                                                {
+                                                    worksheet.Cells[rowIndex, ++index] = "合格";
+                                                    isBatteryOK = true;
+                                                }
+                                                else
+                                                {
+                                                    worksheet.Cells[rowIndex, ++index] = "不合格";
+                                                    isBatteryOK = false;
+                                                }
+                                                break;
+                                            default:
+                                                isBatteryOK = true;
+                                                break;
+                                        }
+                                        #endregion
+                                        worksheet.Cells[rowIndex, ++index] = bPass && bPass2 && isBatteryOK == true ? "通过" : "失败";                                             //老化结果:电池不合格也不能通过
+                                        worksheet.Cells[rowIndex, ++index] = pumpList[j].GetAlarmStringAndOcurredTime() + "\n" + strSecondPumpAlarm;                                                          //报警:带记录第一次发生时间
+
+                                        Excel.Range titleRange = worksheet.Range[worksheet.Cells[rowIndex, 1], worksheet.Cells[rowIndex, index]];                                 //选取一行   
+                                        if (bPass && isBatteryOK)
+                                            titleRange.Interior.ColorIndex = 35;//设置绿颜色
+                                        else
+                                            titleRange.Interior.ColorIndex = 3;//设置红颜色
+                                        #endregion
                                     }
                                     else
                                     {
+                                        #region 老化时间、低电、耗尽等时间都不正常
+                                        worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginAgingTime.Year > 2000 ? pumpList[j].BeginAgingTime.ToString("yyyy-MM-dd HH:mm:ss") : "";
+                                        worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginDischargeTime.Year > 2000 ? pumpList[j].BeginDischargeTime.ToString("yyyy-MM-dd HH:mm:ss") : "";
+                                        worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginLowVoltageTime.Year > 2000 ? pumpList[j].BeginLowVoltageTime.ToString("yyyy-MM-dd HH:mm:ss") : "";
+                                        worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginBattaryDepleteTime.Year > 2000 ? pumpList[j].BeginBattaryDepleteTime.ToString("yyyy-MM-dd HH:mm:ss") : "";
+                                        worksheet.Cells[rowIndex, ++index] = (parameter.RechargeTime * 60).ToString("F1");                                                       //补电时长(min)=系统设置的补电时长
+                                        worksheet.Cells[rowIndex, ++index] = "";
+                                        worksheet.Cells[rowIndex, ++index] = "";
+                                        worksheet.Cells[rowIndex, ++index] = "";
+                                        worksheet.Cells[rowIndex, ++index] = "";
                                         worksheet.Cells[rowIndex, ++index] = "不合格";
-                                    }
-                                }
-                                else
-                                {
-                                    if ((pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginDischargeTime).TotalHours > 4.2
-                                       && (pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginLowVoltageTime).TotalMinutes > 30
-                                       && (pumpList[j].BeginLowVoltageTime - pumpList[j].BeginDischargeTime).TotalMinutes > 120)
-                                    {
-                                        worksheet.Cells[rowIndex, ++index] = "合格";
-                                    }
-                                    else
-                                    {
-                                        worksheet.Cells[rowIndex, ++index] = "不合格";
+                                        worksheet.Cells[rowIndex, ++index] = "失败";
+                                        string strSecondPumpAlarm = string.Empty;
+                                        //不要超过索引范围
+                                        if (j + 1 < pumpList.Count)
+                                        {
+                                            //第二道泵索引一定在第一道后一位
+                                            if (pumpList[j + 1] != null)
+                                            {
+                                                if (pumpList[j + 1].RowNo == pumpList[j].RowNo && pumpList[j + 1].Channel == pumpList[j].Channel && pumpList[j + 1].SubChannel == 1)
+                                                {
+                                                    //第二道泵的报警
+                                                    strSecondPumpAlarm = pumpList[j + 1].GetAlarmStringAndOcurredTime();                                                          //报警:带记录第一次发生时间
+                                                }
+                                            }
+                                        }
+                                        worksheet.Cells[rowIndex, ++index] = pumpList[j].GetAlarmStringAndOcurredTime() + strSecondPumpAlarm;
+                                        Excel.Range titleRange = worksheet.Range[worksheet.Cells[rowIndex, 1], worksheet.Cells[rowIndex, index]];//选取一行   
+                                        titleRange.Interior.ColorIndex = 3;//设置红颜色
+                                        #endregion
                                     }
                                 }
 
-                                Excel.Range titleRange = worksheet.Range[worksheet.Cells[rowIndex, 1], worksheet.Cells[rowIndex, index]];//选取一行   
-                                if (bPass)
-                                    titleRange.Interior.ColorIndex = 35;//设置绿颜色
+                                #endregion
+                            }
+                            else
+                            {
+                                #region 其他型号泵
+                                index = 0;
+                                worksheet.Cells[rowIndex, ++index] = rowIndex - 1;
+                                if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double || m_CurrentCustomProductID == CustomProductID.WZS50F6_Double)
+                                {
+                                    if (pumpList[j].Channel % 2 == 1)
+                                        worksheet.Cells[rowIndex, ++index] = string.Format("{0}—{1}—{2}(1道泵)", m_DockNo, pumpList[j].RowNo, pumpList[j].Channel);
+                                    else
+                                        worksheet.Cells[rowIndex, ++index] = string.Format("{0}—{1}—{2}(2道泵)", m_DockNo, pumpList[j].RowNo, pumpList[j].Channel);
+                                }
                                 else
+                                    worksheet.Cells[rowIndex, ++index] = string.Format("{0}—{1}—{2}", m_DockNo, pumpList[j].RowNo, pumpList[j].Channel);
+                                worksheet.Cells[rowIndex, ++index] = pumpList[j].PumpType;//型号
+                                //根据机器的行号和列号寻找泵的位置信息
+                                if (selectedPumps != null)
+                                {
+                                    Tuple<int, int, int, string> location = selectedPumps.Find((x) => { return x.Item2 == pumpList[j].RowNo && x.Item3 == pumpList[j].Channel; });
+                                    if (location != null)
+                                        worksheet.Cells[rowIndex, ++index] = location.Item4;//机器编号
+                                    else
+                                        worksheet.Cells[rowIndex, ++index] = "";//机器编号
+                                }
+                                else
+                                    worksheet.Cells[rowIndex, ++index] = "";//机器编号
+
+                                if (parameter != null)
+                                    worksheet.Cells[rowIndex, ++index] = parameter.Rate.ToString();//速率
+                                if (pumpList[j].BeginAgingTime.Year > 2000
+                                    && pumpList[j].BeginDischargeTime.Year > 2000
+                                    && pumpList[j].BeginLowVoltageTime.Year > 2000
+                                    && pumpList[j].BeginBattaryDepleteTime.Year > 2000
+                                    && pumpList[j].EndAgingTime.Year > 2000
+                                    )
+                                {
+                                    #region 老化时间、低电、耗尽等时间都正常
+                                    worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginAgingTime.ToString("yyyy-MM-dd HH:mm:ss");                                         //老化开始
+                                    worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginDischargeTime.ToString("yyyy-MM-dd HH:mm:ss");                                     //放电开始
+                                    worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginLowVoltageTime.ToString("yyyy-MM-dd HH:mm:ss");                                    //低电压
+                                    worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginBattaryDepleteTime.ToString("yyyy-MM-dd HH:mm:ss");                                //电池耗尽
+                                    worksheet.Cells[rowIndex, ++index] = (parameter.RechargeTime * 60).ToString("F1");                                                       //补电时长(min)=系统设置的补电时长
+                                    worksheet.Cells[rowIndex, ++index] = (pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginAgingTime).TotalMinutes.ToString("F1");     //老化时长(min)=老化开始至电池耗尽的时长
+                                    worksheet.Cells[rowIndex, ++index] = (pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginDischargeTime).TotalMinutes.ToString("F1"); //放电总时间(min)=放电开始至电池耗尽的时长
+                                    worksheet.Cells[rowIndex, ++index] = (pumpList[j].BeginLowVoltageTime - pumpList[j].BeginDischargeTime).TotalMinutes.ToString("F1");     //低电时长(min)=放电开始至电池低电压的时长
+                                    worksheet.Cells[rowIndex, ++index] = (pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginLowVoltageTime).TotalMinutes.ToString("F1");//耗尽时长(min)=耗尽－低电
+                                    bool bPass = pumpList[j].IsPass();
+                                    #region//电池老化是否合格
+                                    //最新放电标准
+                                    //• WZ-50C6/WZ-50C6T
+                                    //耗尽时间≥30min，放电至欠压报警(低电压时间)≥2H，总放电时间（放电至欠压报警时间）≥4.2H
+                                    //• Graseby C6/Graseby C6T/Graseby 2000/ Graseby 2100
+                                    //耗尽时间≥30min，放电至欠压报警(低电压时间)≥2H，总放电时间（放电至欠压报警时间）≥4.4H
+                                    //• WZS-50F6/Graseby F6
+                                    //耗尽时间≥35min，放电至欠压报警(低电压时间)≥2H，总放电时间（放电至欠压报警时间）≥3.2H
+                                    //• Graseby C8
+                                    //耗尽时间≥30min，放电至欠压报警(低电压时间)≥5.75H，总放电时间（放电至欠压报警时间）≥6.5H
+                                    //• Graseby F8
+                                    //耗尽时间≥30min，放电至欠压报警(低电压时间)≥4.75H，总放电时间（放电至欠压报警时间）≥5.5H 
+                                    bool isBatteryOK = true;
+                                    switch (m_CurrentCustomProductID)
+                                    {
+                                        case CustomProductID.WZ50C6:
+                                        case CustomProductID.WZ50C6T:
+                                            if ((pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginDischargeTime).TotalHours >= 4.2 /*总放电时间*/
+                                            && (pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginLowVoltageTime).TotalMinutes >= 30 /*耗尽时间*/
+                                            && (pumpList[j].BeginLowVoltageTime - pumpList[j].BeginDischargeTime).TotalMinutes >= 120) /*低电压时间*/
+                                            {
+                                                worksheet.Cells[rowIndex, ++index] = "合格";
+                                                isBatteryOK = true;
+                                            }
+                                            else
+                                            {
+                                                worksheet.Cells[rowIndex, ++index] = "不合格";
+                                                isBatteryOK = false;
+                                            }
+                                            break;
+                                        case CustomProductID.GrasebyC6:
+                                        case CustomProductID.GrasebyC6T:
+                                        case CustomProductID.Graseby2000:
+                                        case CustomProductID.Graseby2100:
+                                            if ((pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginDischargeTime).TotalHours >= 4.4 /*总放电时间*/
+                                            && (pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginLowVoltageTime).TotalMinutes >= 30 /*耗尽时间*/
+                                            && (pumpList[j].BeginLowVoltageTime - pumpList[j].BeginDischargeTime).TotalMinutes >= 120) /*低电压时间*/
+                                            {
+                                                worksheet.Cells[rowIndex, ++index] = "合格";
+                                                isBatteryOK = true;
+                                            }
+                                            else
+                                            {
+                                                worksheet.Cells[rowIndex, ++index] = "不合格";
+                                                isBatteryOK = false;
+                                            }
+                                            break;
+                                        case CustomProductID.WZS50F6_Double:
+                                        case CustomProductID.WZS50F6_Single:
+                                        case CustomProductID.GrasebyF6_Double:
+                                        case CustomProductID.GrasebyF6_Single:
+                                            if ((pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginDischargeTime).TotalHours >= 3.2 /*总放电时间*/
+                                             && (pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginLowVoltageTime).TotalMinutes >= 35 /*耗尽时间*/
+                                             && (pumpList[j].BeginLowVoltageTime - pumpList[j].BeginDischargeTime).TotalMinutes >= 120) /*低电压时间*/
+                                            {
+                                                worksheet.Cells[rowIndex, ++index] = "合格";
+                                                isBatteryOK = true;
+                                            }
+                                            else
+                                            {
+                                                worksheet.Cells[rowIndex, ++index] = "不合格";
+                                                isBatteryOK = false;
+                                            }
+                                            break;
+                                        case CustomProductID.GrasebyC8:
+                                            if ((pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginDischargeTime).TotalHours >= 6.5 /*总放电时间*/
+                                            && (pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginLowVoltageTime).TotalMinutes >= 30 /*耗尽时间*/
+                                            && (pumpList[j].BeginLowVoltageTime - pumpList[j].BeginDischargeTime).TotalMinutes >= 345) /*低电压时间*/
+                                            {
+                                                worksheet.Cells[rowIndex, ++index] = "合格";
+                                                isBatteryOK = true;
+                                            }
+                                            else
+                                            {
+                                                worksheet.Cells[rowIndex, ++index] = "不合格";
+                                                isBatteryOK = false;
+                                            }
+                                            break;
+                                        case CustomProductID.GrasebyF8:
+                                            if ((pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginDischargeTime).TotalHours >= 5.5 /*总放电时间*/
+                                            && (pumpList[j].BeginBattaryDepleteTime - pumpList[j].BeginLowVoltageTime).TotalMinutes >= 30 /*耗尽时间*/
+                                            && (pumpList[j].BeginLowVoltageTime - pumpList[j].BeginDischargeTime).TotalMinutes >= 285) /*低电压时间*/
+                                            {
+                                                worksheet.Cells[rowIndex, ++index] = "合格";
+                                                isBatteryOK = true;
+                                            }
+                                            else
+                                            {
+                                                worksheet.Cells[rowIndex, ++index] = "不合格";
+                                                isBatteryOK = false;
+                                            }
+                                            break;
+                                        default:
+                                            isBatteryOK = true;
+                                            break;
+                                    }
+                                    #endregion
+                                    worksheet.Cells[rowIndex, ++index] = bPass && isBatteryOK == true ? "通过" : "失败";                                                       //老化结果:电池不合格也不能通过
+                                    worksheet.Cells[rowIndex, ++index] = pumpList[j].GetAlarmStringAndOcurredTime();                                                          //报警:带记录第一次发生时间
+                                    Excel.Range titleRange = worksheet.Range[worksheet.Cells[rowIndex, 1], worksheet.Cells[rowIndex, index]];//选取一行   
+                                    if (bPass && isBatteryOK)
+                                        titleRange.Interior.ColorIndex = 35;//设置绿颜色
+                                    else
+                                        titleRange.Interior.ColorIndex = 3;//设置红颜色
+                                    #endregion
+                                }
+                                else
+                                {
+                                    #region
+                                    worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginAgingTime.Year > 2000 ? pumpList[j].BeginAgingTime.ToString("yyyy-MM-dd HH:mm:ss") : "";
+                                    worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginDischargeTime.Year > 2000 ? pumpList[j].BeginDischargeTime.ToString("yyyy-MM-dd HH:mm:ss") : "";
+                                    worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginLowVoltageTime.Year > 2000 ? pumpList[j].BeginLowVoltageTime.ToString("yyyy-MM-dd HH:mm:ss") : "";
+                                    worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginBattaryDepleteTime.Year > 2000 ? pumpList[j].BeginBattaryDepleteTime.ToString("yyyy-MM-dd HH:mm:ss") : "";
+                                    worksheet.Cells[rowIndex, ++index] = (parameter.RechargeTime * 60).ToString("F1");                                                       //补电时长(min)=系统设置的补电时长
+                                    worksheet.Cells[rowIndex, ++index] = "";
+                                    worksheet.Cells[rowIndex, ++index] = "";
+                                    worksheet.Cells[rowIndex, ++index] = "";
+                                    worksheet.Cells[rowIndex, ++index] = "";
+                                    worksheet.Cells[rowIndex, ++index] = "不合格";
+                                    worksheet.Cells[rowIndex, ++index] = "失败";
+                                    worksheet.Cells[rowIndex, ++index] = pumpList[j].GetAlarmStringAndOcurredTime();
+                                    Excel.Range titleRange = worksheet.Range[worksheet.Cells[rowIndex, 1], worksheet.Cells[rowIndex, index]];//选取一行   
                                     titleRange.Interior.ColorIndex = 3;//设置红颜色
-                            }
-                            else
-                            {
-                                worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginAgingTime.Year > 2000 ? pumpList[j].BeginAgingTime.ToString("yyyy-MM-dd HH:mm:ss") : "";
-                                worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginDischargeTime.Year > 2000 ? pumpList[j].BeginDischargeTime.ToString("yyyy-MM-dd HH:mm:ss") : "";
-                                worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginLowVoltageTime.Year > 2000 ? pumpList[j].BeginLowVoltageTime.ToString("yyyy-MM-dd HH:mm:ss") : "";
-                                worksheet.Cells[rowIndex, ++index] = pumpList[j].BeginBattaryDepleteTime.Year > 2000 ? pumpList[j].BeginBattaryDepleteTime.ToString("yyyy-MM-dd HH:mm:ss") : "";
-                                worksheet.Cells[rowIndex, ++index] = pumpList[j].EndAgingTime.Year > 2000 ? pumpList[j].EndAgingTime.ToString("yyyy-MM-dd HH:mm:ss") : "";
-                                worksheet.Cells[rowIndex, ++index] = "";
-                                worksheet.Cells[rowIndex, ++index] = "";//耗尽－开始
-                                worksheet.Cells[rowIndex, ++index] = "";;//耗尽－低电
-                                worksheet.Cells[rowIndex, ++index] = "失败";
-                                worksheet.Cells[rowIndex, ++index] = pumpList[j].GetAlarmStringAndOcurredTime();
-                                worksheet.Cells[rowIndex, ++index] = "不合格";
-                                Excel.Range titleRange = worksheet.Range[worksheet.Cells[rowIndex, 1], worksheet.Cells[rowIndex, index]];//选取一行   
-                                titleRange.Interior.ColorIndex = 3;//设置红颜色
-                            }
+                                    #endregion
+                                }
 
+                                #endregion
+                            }
                         }
-                        rowIndex++;
+                        if (m_CurrentCustomProductID == CustomProductID.GrasebyF8)
+                        {
+                            if(j%2==1)
+                            {
+                                rowIndex++;
+                            }
+                        }
+                        else
+                            rowIndex++;
                     }
                 }
             }
-           
+            #region 保存到磁盘文件
             if (saveFileName != "")
             {
                 try
@@ -1887,6 +2078,8 @@ namespace  AgingSystem
                     workbook.Saved = true;
                     System.Reflection.Missing miss = System.Reflection.Missing.Value;
                     workbook.SaveCopyAs(saveFileName);
+                    Thread.Sleep(1000);
+                    workbook.SaveCopyAs(saveFileNameBackup);//保存另一份到备份文件夹中
                 }
                 catch (Exception ex)
                 {
@@ -1915,6 +2108,7 @@ namespace  AgingSystem
                 xlApp = null;
             }
             GC.Collect();
+            #endregion
         }
 
         #region 检查泵启动状态系列函数
@@ -2323,7 +2517,7 @@ namespace  AgingSystem
                         iChannel = (int)m_HashRowNo[connected_controllers[i].RowNo];
                         channel = (byte)(iChannel & 0x000000FF);
                         //如果是F6，F6双通道共用电池，在放电的时候第二通道不用执行放电命令，因为第一通道已经执行放电， 20170922
-                        if (this.m_CurrentProductID == ProductID.GrasebyF6)
+                        if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double || m_CurrentCustomProductID == CustomProductID.WZS50F6_Double)
                             channel &= 0x55; //二进制01010101，奇数串口位接1通道
                         //老化放电命令
                         m_CmdManager.SendCmdDischarge(connected_controllers[i].SocketToken, CommandResponseForDischarge, null, channel);
@@ -2402,7 +2596,7 @@ namespace  AgingSystem
                     if (depleteController != null)
                     {
                         channels = m_DepleteManager.DepletePumpQueue[i].GenChannel();
-                        if (this.m_CurrentProductID == ProductID.GrasebyF6)
+                        if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double || m_CurrentCustomProductID == CustomProductID.WZS50F6_Double)
                             channels &= 0x55; //二进制01010101，奇数串口位接1通道
                         m_CmdManager.SendCmdRecharge(channels, depleteController.SocketToken, CommandResponseForReCharge);
                         Logger.Instance().InfoFormat("向IP={0}的控制器发送补电命令，通道号={1}", depleteController.IP, channels);
@@ -2457,7 +2651,9 @@ namespace  AgingSystem
                     }
 
                     AgingPump pumpSecond = null;
-                    if(this.m_CurrentProductID==ProductID.GrasebyF6)
+
+                    #region GrasebyF6\WZS50F6
+                    if (m_CurrentCustomProductID == CustomProductID.GrasebyF6_Double || m_CurrentCustomProductID == CustomProductID.WZS50F6_Double)
                     {
                         if (ch % 2 == 1)
                         {
@@ -2467,7 +2663,7 @@ namespace  AgingSystem
                             }
                             catch
                             {
-                                Logger.Instance().Info("CommandResponseForReCharge()->depleteController.AgingPumpList.Find() pumpSecond Error");
+                                Logger.Instance().Info("CommandResponseForReCharge()->depleteController.AgingPumpList.Find() F6 pumpSecond Error");
                             }
 
                             if (pumpSecond != null)
@@ -2482,6 +2678,31 @@ namespace  AgingSystem
                             }
                         }
                     }
+                    #endregion
+
+                    #region GrasebyF8
+                    if (m_CurrentCustomProductID == CustomProductID.GrasebyF8)
+                    {
+                        try
+                        {
+                            pumpSecond = depleteController.AgingPumpList.Find((x) => { return x.Channel == ch && x.SubChannel == 1; });
+                        }
+                        catch
+                        {
+                            Logger.Instance().Info("CommandResponseForReCharge()->depleteController.AgingPumpList.Find() GrasebyF8 pumpSecond Error");
+                        }
+                        if (pumpSecond != null)
+                        {
+                            pumpSecond.BeginRechargeTime = DateTime.Now;
+                            pumpSecond.AgingStatus = EAgingStatus.Recharging;
+                            Logger.Instance().InfoFormat("货架编号={0},控制器IP={1},通道号={2}, 双道中的第{3}道泵已经补电", pumpSecond.DockNo, cmd.RemoteSocket.IP, pumpSecond.Channel, pumpSecond.SubChannel+1);
+                        }
+                        else
+                        {
+                            Logger.Instance().InfoFormat("CommandResponseForReCharge()-> GrasebyF8 pumpSecond泵对象为null 控制器IP={0} 通道号={1}", cmd.RemoteSocket.IP, ch);
+                        }
+                    }
+                    #endregion
                 }
                 //收到回应后移除报警泵
                 lock (m_DepleteManager)

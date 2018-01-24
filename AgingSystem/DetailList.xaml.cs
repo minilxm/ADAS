@@ -31,7 +31,7 @@ namespace  AgingSystem
     {
         private int                      m_DockNo;
         private AgingParameter           m_Parameter;
-        private List<Tuple<int,int,int>> m_PumpLocationList;//int pumpLocation,int rowNo,int colNo 
+        private List<Tuple<int, int, int, string>> m_PumpLocationList;//int pumpLocation,int rowNo,int colNo 
         private List<AgingPump>          m_AgingPumpList;
 
         public DetailList()
@@ -46,7 +46,7 @@ namespace  AgingSystem
         /// <param name="parameter"></param>
         /// <param name="pumpLocationList"></param>
         /// <param name="AgingPumpList"></param>
-        public DetailList(int dockNo,AgingParameter parameter, List<Tuple<int,int,int>> pumpLocationList, List<AgingPump> AgingPumpList)
+        public DetailList(int dockNo, AgingParameter parameter, List<Tuple<int, int, int, string>> pumpLocationList, List<AgingPump> AgingPumpList)
         {
             InitializeComponent();
             m_DockNo = dockNo;
@@ -57,11 +57,24 @@ namespace  AgingSystem
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            if(m_PumpLocationList!=null && m_PumpLocationList.Count<=15)
+            ProductID pid = ProductID.Unknow;
+            CustomProductID cid = CustomProductID.Unknow;
+            if (Enum.IsDefined(typeof(CustomProductID), m_Parameter.PumpType))
             {
-                this.Height += m_PumpLocationList.Count*40;
+                cid = (CustomProductID)Enum.Parse(typeof(CustomProductID), m_Parameter.PumpType);
+                pid = ProductIDConvertor.Custom2ProductID(cid);
+            }
+            int pumpCount = m_PumpLocationList.Count;
+            if (pid == ProductID.GrasebyF8)
+            {
+                pumpCount = pumpCount * 2;
+            }
+
+            if (m_PumpLocationList != null && pumpCount <= 15)
+            {
+                this.Height += pumpCount * 40;
                 this.Height += 8;
-                scroll.Height += m_PumpLocationList.Count*40;
+                scroll.Height += pumpCount * 40;
                 scroll.Height += 8;
             }
             else
@@ -88,11 +101,10 @@ namespace  AgingSystem
                 Logger.Instance().Info("老化泵数量等于0。");
                 return;
             }
-            ProductID pid = ProductID.Unknow;
-            if (Enum.IsDefined(typeof(ProductID), m_Parameter.PumpType))
-            {
-                pid = (ProductID)Enum.Parse(typeof(ProductID), m_Parameter.PumpType);
-            }
+            CustomProductID cid = ProductIDConvertor.Name2CustomProductID(m_Parameter.PumpType);
+            ProductID pid = ProductIDConvertor.Custom2ProductID(cid);
+            if (pid == ProductID.GrasebyF8)
+                pumpCount = pumpCount * 2;//F8则需要X2
 
            
             for (int i = 0; i < pumpCount; i++)
@@ -106,7 +118,7 @@ namespace  AgingSystem
             {
                 SingleDetail detail = new SingleDetail();
                 //F6,F8双道泵显示详细内容与其他泵不一样，要体现双道信息
-                if (pid == ProductID.GrasebyF6)
+                if (cid == CustomProductID.GrasebyF6_Double || cid == CustomProductID.WZS50F6_Double)
                 {
                     if (m_PumpLocationList[i].Item3 % 2 == 0)
                     {
@@ -116,10 +128,15 @@ namespace  AgingSystem
                     {
                         detail.lbPumpLocation.Content = string.Format("{0}-{1}-{2}(1道泵)", m_DockNo, m_PumpLocationList[i].Item2, m_PumpLocationList[i].Item3);
                     }
+                    detail.lbPumpSN.Content = m_PumpLocationList[i].Item4;
                 }
-                else if (pid == ProductID.GrasebyF8)
+                else if (cid == CustomProductID.GrasebyF8)
                 {
-                    //F8
+                    if(i%2==0)
+                        detail.lbPumpLocation.Content = string.Format("{0}-{1}-{2}(1道泵)", m_DockNo, m_PumpLocationList[i/2].Item2, m_PumpLocationList[i/2].Item3);
+                    else
+                        detail.lbPumpLocation.Content = string.Format("{0}-{1}-{2}(2道泵)", m_DockNo, m_PumpLocationList[i/2].Item2, m_PumpLocationList[i/2].Item3);
+                    detail.lbPumpSN.Content = m_PumpLocationList[i / 2].Item4;
                 }
                 else
                 {
@@ -131,7 +148,14 @@ namespace  AgingSystem
                 detail.lbNo.Content = string.Format("{0}",i + 1);
                 detail.lbPumpType.Content = m_Parameter.PumpType;
                 detail.lbRate.Content = m_Parameter.Rate.ToString();
-                AgingPump AgingPump = m_AgingPumpList.Find((x)=>{return x.DockNo==m_DockNo && x.RowNo==m_PumpLocationList[i].Item2 && x.Channel==m_PumpLocationList[i].Item3;});
+                AgingPump AgingPump = null;
+                if (cid == CustomProductID.GrasebyF8)
+                {
+                    //F8双通道共用一个串口，在查找泵时需要指定通道编号从0开始
+                    AgingPump = m_AgingPumpList.Find((x) => { return x.DockNo == m_DockNo && x.RowNo == m_PumpLocationList[i/2].Item2 && x.Channel == m_PumpLocationList[i/2].Item3 && x.SubChannel==i % 2; });
+                }
+                else
+                    AgingPump = m_AgingPumpList.Find((x)=>{return x.DockNo==m_DockNo && x.RowNo==m_PumpLocationList[i].Item2 && x.Channel==m_PumpLocationList[i].Item3;});
                 if (AgingPump != null)
                 {
                     if (AgingPump.BeginAgingTime.Year > 2000)

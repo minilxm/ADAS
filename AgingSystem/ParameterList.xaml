@@ -1,7 +1,7 @@
 ﻿<Window xmlns:AgingSystem="clr-namespace:AgingSystem"  x:Class="AgingSystem.ParameterList"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="默认参数列表" Height="470" Width="640" WindowStartupLocation="CenterScreen" ResizeMode="NoResize" Loaded="Window_Loaded" >
+        Title="默认参数列表" Height="550" Width="690" WindowStartupLocation="CenterScreen" ResizeMode="NoResize" Loaded="Window_Loaded" >
     <Grid Name="parameterListGrid" Margin="0">
         <Grid.Resources>
             <Style
@@ -31,6 +31,9 @@
             <RowDefinition Height="*"></RowDefinition>
             <RowDefinition Height="*"></RowDefinition>
             <RowDefinition Height="*"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
             <RowDefinition Height="1.5*"></RowDefinition>
         </Grid.RowDefinitions>
         <Border Grid.Column="0"></Border>
@@ -46,7 +49,7 @@
         <Grid Name="titleGrid" Grid.Row="0" Grid.Column="0" Margin="0" ShowGridLines="False">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"></ColumnDefinition>
-                <ColumnDefinition Width="1.5*"></ColumnDefinition>
+                <ColumnDefinition Width="2.0*"></ColumnDefinition>
                 <ColumnDefinition Width="1.5*"></ColumnDefinition>
                 <ColumnDefinition Width="1.5*"></ColumnDefinition>
                 <ColumnDefinition Width="1.5*"></ColumnDefinition>
@@ -80,7 +83,7 @@
         <AgingSystem:Parameter x:Name="WZS50F6"     Grid.Row="11" Grid.Column="0" Margin="1" Background="LightBlue"/-->
 
         <!--按钮-->
-        <Grid Name="buttonGrid" Grid.Row="13" Grid.Column="0" Margin="0" ShowGridLines="False">
+        <Grid Name="buttonGrid" Grid.Row="16" Grid.Column="0" Margin="0" ShowGridLines="False">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"></ColumnDefinition>
                 <ColumnDefinition Width="*"></ColumnDefinition>

@@ -48,7 +48,7 @@ namespace Cmd
                 return;
             }
             byte packageSize = this.Channel;
-            byte payloadLength = this.m_PayloadLength;
+            ushort payloadLength = this.m_PayloadLength;
             if (payloadLength % packageSize != 0)
             {
                 Logger.Instance().ErrorFormat("报警信息数据包有误不是单包的整数倍，单包大小={0},包总大小={1}", packageSize, payloadLength);

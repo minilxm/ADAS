@@ -78,6 +78,12 @@ namespace WifiSimulator
             return single;
         }
 
+        /// <summary>
+        /// 一个泵的报警
+        /// </summary>
+        /// <param name="chanel"></param>
+        /// <param name="alarm"></param>
+        /// <returns></returns>
         public List<byte> CreateSinglePumpAlarm(byte chanel, uint alarm)
         {
             List<byte> single = new List<byte>();
@@ -118,9 +124,14 @@ namespace WifiSimulator
             package.Add(0x00);
             package.Add(0x07);
             package.Add(0x16);
-
+            //数据长度
             package.Add((byte)(pumpCount * 22));
+            package.Add(0x00);
+
+            //数据长度取反
             package.Add((byte)((byte)0xFF - (byte)(pumpCount * 22)));
+            package.Add(0xFF);
+
             for (int i = 0; i < pumpCount; i++)
                 package.AddRange(CreateSinglePumpAlarm((byte)(i + 1), alarm));
             //泵电源状态
@@ -145,8 +156,14 @@ namespace WifiSimulator
             package.Add(0x07);
             package.Add(0x16);
 
+            //数据长度
             package.Add((byte)(pumpCount * 22));
+            package.Add(0x00);
+
+            //数据长度取反
             package.Add((byte)((byte)0xFF - (byte)(pumpCount * 22)));
+            package.Add(0xFF);
+
             for (int i = 0; i < pumpCount; i++)
             {
                 if (pumpIndexs.Contains(i + 1))
@@ -169,10 +186,72 @@ namespace WifiSimulator
             package.Add(0x07);
             package.Add(0x16);
 
+            //数据长度
             package.Add((byte)(pumpCount * 22));
+            package.Add(0x00);
+
+            //数据长度取反
             package.Add((byte)((byte)0xFF - (byte)(pumpCount * 22)));
+            package.Add(0xFF);
+
             for (int i = 0; i < pumpCount; i++)
                 package.AddRange(CreateSinglePumpAlarm((byte)(i + 1)));
+            //泵电源状态
+            package.Add(0x02);
+            package.Add(0x00);
+            package.Add(0x00);
+            package.Add(0xEE);
+            return package;
+        }
+
+        /// <summary>
+        /// 构建F8双道泵报警的泵数据
+        /// </summary>
+        /// <param name="pumpIndexs">带有报警的泵ID，其余的没有报警</param>
+        /// <param name="alarm">具体是哪项报警</param>
+        /// <param name="pumpCount">上报泵的总数</param>
+        /// <returns></returns>
+        public List<byte> CreateF8AlarmPackage(List<int> pumpIndexs, uint alarm, int pumpCount = 12)
+        {
+            List<byte> package = new List<byte>();
+            package.Add(0x00);
+            package.Add(0x07);
+            package.Add(0x16);//一个泵数据22字节
+
+            //数据长度
+            ushort packageLength = (ushort)(pumpCount * 22);
+            package.Add((byte)(packageLength & 0x00FF));
+            package.Add((byte)(packageLength >> 8 & 0x00FF));
+
+            ushort packageReverseLength = (ushort)(0xFFFF - packageLength);
+
+            //数据长度取反
+            package.Add((byte)(packageReverseLength & 0x00FF));
+            package.Add((byte)(packageReverseLength >> 8 & 0x00FF));
+            byte channel = 1;
+
+            for (int i = 0; i < pumpCount; i++)
+            {
+                if (i % 2==0)
+                {
+                    channel |= 0x10;//第一道泵高4位为1
+                }
+                else
+                {
+                    channel |= 0x20;//第二道泵高4位为2
+                }
+
+                //if (pumpIndexs.Contains(i + 1))
+                package.AddRange(CreateSinglePumpAlarm(channel, alarm));
+                //else
+                //    package.AddRange(CreateSinglePumpAlarm(channel, 0));
+                channel &= 0x0F;
+
+                if (i % 2 == 1)
+                {
+                    channel += 1;
+                }
+            }
             //泵电源状态
             package.Add(0x02);
             package.Add(0x00);
