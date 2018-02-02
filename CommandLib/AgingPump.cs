@@ -13,7 +13,7 @@ namespace Cmd
     {
         private int                        m_DockNo;
         private int                        m_RowNo;
-        private byte                       m_Channel;                                             //这个泵的通道号，由报警信息上传得到
+        private byte                       m_Channel;                                             //这个泵的通道号，由报警信息上传得到,是自然数1~8,并不是按位定义
         private string                     m_PumpType                 = string.Empty;              //机器型号
         private EAgingStatus               m_AgingStatus              = EAgingStatus.Unknown;      //当前老化状态（含红色报警）
         private EAgingStatus               m_RedAlarmStatus           = EAgingStatus.Unknown;      //有红色报警

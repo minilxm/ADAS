@@ -1312,7 +1312,8 @@ namespace  AgingSystem
                 #region //2017-03-09 检查放电命令遗漏的控制器，这个指令没有被执行时，可以通过报警信息中的电源信息间接得知
                 if (count > 0)
                 {
-                    byte pumpChannel = 0xFF;
+                    byte pumpChannel = 0xFF;//自然数1~8,不是位
+                    byte bitChannel = 1;
                     try
                     {
                         for (int index = 0; index < count; index++)
@@ -1321,7 +1322,8 @@ namespace  AgingSystem
                             AgingPump pump = controller.FindPump(dockNo, rowNo, pumpChannel);
                             if (pump != null && pump.AgingStatus == EAgingStatus.DisCharging && cmd.PumpPackages[index].Power.PowerStatus == PumpPowerStatus.AC)
                             {
-                                m_CmdManager.SendCmdDischarge(controller.SocketToken, null, null, pumpChannel);
+                                bitChannel = (byte)(1 << pumpChannel - 1);//给控制器发命令时，需要按位发送
+                                m_CmdManager.SendCmdDischarge(controller.SocketToken, null, null, bitChannel);
                                 if (controller.AgingStatus < EAgingStatus.DisCharging)
                                     controller.AgingStatus = EAgingStatus.DisCharging;
                                 pump.AgingStatus = EAgingStatus.DisCharging;

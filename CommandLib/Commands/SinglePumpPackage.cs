@@ -7,7 +7,7 @@ namespace Cmd
 {
     public class SinglePumpPackage
     {
-        private byte m_Chanel = 0;
+        private byte m_Chanel = 0;//此处通道号不是按位定义，而是自然数1~8
         private PowerInfo m_Power;
         private AlarmInfo m_Alarm;
 
