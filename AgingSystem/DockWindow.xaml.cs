@@ -405,20 +405,15 @@ namespace  AgingSystem
             AgingParameter para = m_DockParameter[dockNo] as AgingParameter;
             if (para != null)
             {
-                if (Enum.IsDefined(typeof(CustomProductID), para.PumpType))
-                {
-                    CustomProductID cid = (CustomProductID)Enum.Parse(typeof(CustomProductID), para.PumpType);
-                    ProductID pid = ProductIDConvertor.Custom2ProductID(cid);
-                    CommandManage cmdManager = new CommandManage();
-                    int iChannel = (int)dock.ChannelHashRowNo[controller.RowNo];
-                    byte channel = (byte)(iChannel & 0x000000FF);
-                    //一旦收到连接，立即发送泵信息,必须要延迟10秒
-                    cmdManager.SendPumpType(pid, (ushort)m_QueryInterval, e.ConnectedSocket, null, channel);
-                }
-                else
-                {
-                    Logger.Instance().ErrorFormat("SendPumpType2Wifi()->para.PumpType is not defined! para.PumpType={0}", para.PumpType);
-                }
+                CustomProductID cid = ProductIDConvertor.Name2CustomProductID(para.PumpType);
+                ProductID pid = ProductIDConvertor.Custom2ProductID(cid);
+                CommandManage cmdManager = new CommandManage();
+                int iChannel = (int)dock.ChannelHashRowNo[controller.RowNo];
+                byte channel = (byte)(iChannel & 0x000000FF);
+                //一旦收到连接，立即发送泵信息,必须要延迟10秒
+                if (pid == ProductID.Graseby1200En)//英文版的ID和中文的一样
+                    pid = ProductID.Graseby1200;
+                cmdManager.SendPumpType(pid, (ushort)m_QueryInterval, e.ConnectedSocket, null, channel);
             }
             else
             {

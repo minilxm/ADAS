@@ -769,7 +769,7 @@ namespace Analyse
         /// <param name="args"></param>
         private void MapIPFromWifi(object sender, DataTransmissionEventArgs args)
         {
-            if(args.Token.ConnectSocket!=null)
+            if (args.Token != null && args.Token.ConnectSocket != null)
             {
                 AsyncSocketUserToken socket = args.Token;
                 long ip = ControllerManager.GetLongIPFromSocket(socket);
@@ -787,11 +787,15 @@ namespace Analyse
                 }
                 else
                 {
-                    if (m_Device!=null)
+                    if (m_Device != null)
                         m_Device.CloseClientSocket(args.Token);
                     Logger.Instance().ErrorFormat("MapIPFromWifi()->ControllerManager.Instance().Get 错误，IP={0}", ip);
                     return;
                 }
+            }
+            else
+            {
+                Logger.Instance().Error("MapIPFromWifi()->args.Token = null || args.Token.ConnectSocket = null");
             }
         }
 
