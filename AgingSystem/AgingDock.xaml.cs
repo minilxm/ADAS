@@ -2184,7 +2184,7 @@ namespace  AgingSystem
                             pid = ProductID.Graseby1200;
                         m_CmdManager.SendPumpType(pid, m_QueryInterval, controller.SocketToken, CommandResponseForCheckPumpStatus, null, channel);
                         //每个控制器等待10秒,由CommandResponseForCheckPumpStatus函数来更新状态
-                        Thread.Sleep(10000);
+                        Thread.Sleep(30000);
                     }
                 }
                 Thread.Sleep(1000);
@@ -2612,7 +2612,7 @@ namespace  AgingSystem
                 long ip = ControllerManager.GetLongIPFromSocket(cmd.RemoteSocket);
                 m_HashDisChargeController.Remove(ip);
                 Controller controller = m_Controllers.Find((x) => { return x.IP == ip; });
-                if (controller.SocketToken != null)
+                if (controller!=null && controller.SocketToken != null)
                 {
                     controller.BeginDischargeTime = DateTime.Now;
                     foreach (var agingPump in controller.AgingPumpList)

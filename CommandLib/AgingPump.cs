@@ -364,6 +364,7 @@ namespace Cmd
             Hashtable alarmMetrix = null;
             uint depletealArmIndex = 0, lowVolArmIndex = 0;//耗尽和低电压索引
             uint completeArmIndex = 0, willCompleteArmIndex = 0;//输液结束和输液即将结束
+            uint forgetStartAlarmIndex = 0; //未启动
 
             #region //查询耗尽.低电输液结束和输液即将结束4种类型的报警索引
             switch (pid)
@@ -388,6 +389,7 @@ namespace Cmd
                     lowVolArmIndex = 0x00000001;
                     completeArmIndex = 0x00040000;
                     willCompleteArmIndex = 0x00000004;
+                    forgetStartAlarmIndex = 0x00000002; 
                     break;
                 case ProductID.GrasebyF6:
                     alarmMetrix = AlarmMetrix.Instance().AlarmMetrixF6;
@@ -402,6 +404,7 @@ namespace Cmd
                     lowVolArmIndex = 0x00000001;
                     completeArmIndex = 0x00040000;
                     willCompleteArmIndex = 0x00000004;
+                    forgetStartAlarmIndex = 0x00000002; 
                     break;
                 case ProductID.Graseby1200:
                     alarmMetrix = AlarmMetrix.Instance().AlarmMetrix1200;
@@ -436,7 +439,7 @@ namespace Cmd
             }
                 #endregion
 
-            uint filterAlarm = m_Alarm & (~(depletealArmIndex | lowVolArmIndex | completeArmIndex | willCompleteArmIndex));
+            uint filterAlarm = m_Alarm & (~(depletealArmIndex | lowVolArmIndex | completeArmIndex | willCompleteArmIndex | forgetStartAlarmIndex));
             if(filterAlarm>0)
                 return false;
             else
