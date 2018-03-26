@@ -2716,7 +2716,7 @@ namespace  AgingSystem
                         pump.BeginRechargeTime = DateTime.Now;
                         pump.AgingStatus = EAgingStatus.Recharging;
                         Logger.Instance().InfoFormat("货架编号={0},控制器IP={1},通道号={2}的泵已经补电", pump.DockNo, cmd.RemoteSocket.IP, pump.Channel);
-                        graseby1200ChannelBit |= (byte)(1 << pump.Channel); 
+                        graseby1200ChannelBit |= (byte)(1 << pump.Channel-1); 
                     }
                     else
                     {
