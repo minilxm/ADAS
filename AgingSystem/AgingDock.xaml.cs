@@ -2698,7 +2698,8 @@ namespace  AgingSystem
                     return;
                 if (pumpList.channels.Count == 0)
                     return;
-                //byte channel = 0;
+                AgingParameter para = m_DockParameter[m_DockNo] as AgingParameter;
+                byte graseby1200ChannelBit = 0;
                 foreach (var ch in pumpList.channels)
                 {
                     AgingPump pump = null;
@@ -2715,6 +2716,7 @@ namespace  AgingSystem
                         pump.BeginRechargeTime = DateTime.Now;
                         pump.AgingStatus = EAgingStatus.Recharging;
                         Logger.Instance().InfoFormat("货架编号={0},控制器IP={1},通道号={2}的泵已经补电", pump.DockNo, cmd.RemoteSocket.IP, pump.Channel);
+                        graseby1200ChannelBit |= (byte)(1 << pump.Channel); 
                     }
                     else
                     {
@@ -2775,6 +2777,17 @@ namespace  AgingSystem
                     }
                     #endregion
                 }
+
+                //20180326针对1200，添加补电成功后启动的命令，其他泵不启动
+                if (m_CurrentCustomProductID == CustomProductID.Graseby1200 || m_CurrentCustomProductID == CustomProductID.Graseby1200En)
+                {
+                    if (graseby1200ChannelBit>0 && para != null && depleteController != null && depleteController.SocketToken != null)
+                    {
+                        m_CmdManager.SendCmdCharge(para.Rate, para.Volume, depleteController.SocketToken, null, null, graseby1200ChannelBit);
+                        Logger.Instance().InfoFormat("CommandResponseForReCharge() 佳士比1200补电命令返回，同时发送启动命令, 启动通道={0}", graseby1200ChannelBit);
+                    }
+                }
+
                 //收到回应后移除报警泵
                 lock (m_DepleteManager)
                 {

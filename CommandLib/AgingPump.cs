@@ -57,7 +57,7 @@ namespace Cmd
             set { m_RowNo = value; }
         }
         /// <summary>
-        /// 所在列号
+        /// 所在列号,自然数1~8
         /// </summary>
         public byte Channel
         {
