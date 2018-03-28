@@ -2783,7 +2783,7 @@ namespace  AgingSystem
                 {
                     if (graseby1200ChannelBit>0 && para != null && depleteController != null && depleteController.SocketToken != null)
                     {
-                        m_CmdManager.SendCmdCharge(para.Rate, para.Volume, depleteController.SocketToken, null, null, graseby1200ChannelBit);
+                        m_CmdManager.SendCmdCharge(para.Rate*10, para.Volume, depleteController.SocketToken, null, null, graseby1200ChannelBit);
                         Logger.Instance().InfoFormat("CommandResponseForReCharge() 佳士比1200补电命令返回，同时发送启动命令, 启动通道={0}", graseby1200ChannelBit);
                     }
                 }
