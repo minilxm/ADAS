@@ -2689,9 +2689,12 @@ namespace  AgingSystem
                         pump.AgingStatus = EAgingStatus.Recharging;
                         Logger.Instance().InfoFormat("货架编号={0},控制器IP={1},通道号={2}的泵已经补电", pump.DockNo, cmd.RemoteSocket.IP, pump.Channel);
                         //graseby1200ChannelBit |= (byte)(1 << pump.Channel-1);
-                        lock (m_RebootPumpManager)
+                        if (m_CurrentCustomProductID == CustomProductID.Graseby1200 || m_CurrentCustomProductID == CustomProductID.Graseby1200En)
                         {
-                            m_RebootPumpManager.UpdateRebootInfo(cmd.RemoteSocket.IP, pump.Channel);
+                            lock (m_RebootPumpManager)
+                            {
+                                m_RebootPumpManager.UpdateRebootInfo(cmd.RemoteSocket.IP, pump.Channel);
+                            }
                         }
                     }
                     else
