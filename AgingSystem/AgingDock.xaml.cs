@@ -90,7 +90,10 @@ namespace  AgingSystem
 
         //以下定义老化补电线程必须变量
         private DepletePumpManager m_DepleteManager = new DepletePumpManager();                //多线程共同访问需要加锁
+        private RebootPumpManager m_RebootPumpManager = new RebootPumpManager();               //多线程共同访问需要加锁
+
         private bool m_bKeepReCharge = true;
+        private bool m_bKeepReboot = true;
 
         private DateTime m_LastRechargeTime = DateTime.MinValue;                                //货架上最后一个补电开始时间
 
@@ -428,10 +431,7 @@ namespace  AgingSystem
             {
                 Logger.Instance().Info("充电时间已满，准备开始老化放电！");
                 StopChargeTimer();
-                //此处调用老化放电命令，因为上电时间是同时的，所以，放电时间也是同时的，不用每个泵单独发
-                //m_CmdManager.SendCmdDischarge()
-                //找出那些已经连接的SOCKET
-                //List<Controller> controller = ControllerManager.Instance().Get(m_DockNo);
+                
                 if (m_Controllers.Count <= 0)
                 {
                     MessageBox.Show("配置文件出错，未检测到相关货架的配置文件！");
@@ -439,40 +439,7 @@ namespace  AgingSystem
                 }
                 //启动放电线程，30分钟倒计时，处理放电。给每个控制器发送放电命令后等待反馈，超时后进入下一个发送周期
                 CreateCheckDisChargeThread();
-                //int iChannel = 0;
-                //byte channel = 0;
-                //List<Controller> controllers = m_Controllers.FindAll((x) => { return x.SocketToken != null; });
-                //if (controllers != null && controllers.Count > 0)
-                //{
-                //for (int i = 0; i < controllers.Count; i++)
-                //{
-                //    if(!m_HashRowNo.ContainsKey(controllers[i].RowNo))
-                //        continue;
-                //    iChannel = (int)m_HashRowNo[controllers[i].RowNo];
-                //    channel = (byte)(iChannel & 0x000000FF);
-                //    //老化放电命令不要回调函数，因为控制器可能在发送放电命令时掉线了
-                //    //如果没有回应就不发了，等控制器重新连接上时，它会自动发送报警数据包，此包中带有泵的电源信息，
-                //    //如果是AC电源，则表示还没有进行放电操作，重新发送放电指令。
-                //    m_CmdManager.SendCmdDischarge(controllers[i].SocketToken, null, null, channel);   
-                //}
-                //foreach(var obj in controllers)
-                //{
-                //    if(obj.SocketToken!=null)
-                //    { 
-                //        obj.BeginDischargeTime = DateTime.Now;
-                //        foreach(var agingPump in obj.AgingPumpList)
-                //        {
-                //            if(agingPump!=null)
-                //            { 
-                //                agingPump.AgingStatus = EAgingStatus.DisCharging;//"老化放电中";
-                //                agingPump.BeginDischargeTime = DateTime.Now;
-                //            }
-                //        }
-                //    }
-                //}
                 this.Dispatcher.BeginInvoke(new DeleSetBackGround(SetStatusAndBackground), new object[] { Colors.Yellow, EAgingStatus.DisCharging/*"老化放电中"*/});
-
-                //}
             }
         }
         /// <summary>
@@ -966,7 +933,7 @@ namespace  AgingSystem
                 }
                 #endregion
             }
-            if(counter<=0)
+            if (counter <= 0)
             {
                 OnEnableControls(true);
             }
@@ -978,6 +945,10 @@ namespace  AgingSystem
                 //补电线程启动，等待队列中有新的耗尽泵进入
                 m_bKeepReCharge = true;
                 CreateCheckReChargeThread();
+                //1200重启线程启动
+                m_bKeepReboot = true;
+                if (m_CurrentCustomProductID == CustomProductID.Graseby1200 || m_CurrentCustomProductID == CustomProductID.Graseby1200En)
+                    CreateCheckRebootThread();
             }
         }
 
@@ -993,6 +964,8 @@ namespace  AgingSystem
                 lbCompleteCount.Content="完成数量:0";
                 //关闭补电线程 20170708
                 StopCheckReChargeThread();
+                //关闭1200重启函数
+                StopCheckRebootThread();
                 m_bKeepCheckPumpStatus = false;
                 StopAging();
                 StartCheckPumpStopStatusTimer();//启动时钟
@@ -1167,7 +1140,6 @@ namespace  AgingSystem
             }
         }
         #endregion
-
 
         private void EnableControls(bool bEnabled = false)
         {
@@ -2644,7 +2616,7 @@ namespace  AgingSystem
         private void StopCheckReChargeThread()
         {
             m_bKeepReCharge = false;
-            Thread.Sleep(5000);
+            Thread.Sleep(2000);
             lock (m_DepleteManager)
             {
                 m_DepleteManager.Clear();
@@ -2699,7 +2671,7 @@ namespace  AgingSystem
                 if (pumpList.channels.Count == 0)
                     return;
                 AgingParameter para = m_DockParameter[m_DockNo] as AgingParameter;
-                byte graseby1200ChannelBit = 0;
+                //byte graseby1200ChannelBit = 0;
                 foreach (var ch in pumpList.channels)
                 {
                     AgingPump pump = null;
@@ -2716,7 +2688,11 @@ namespace  AgingSystem
                         pump.BeginRechargeTime = DateTime.Now;
                         pump.AgingStatus = EAgingStatus.Recharging;
                         Logger.Instance().InfoFormat("货架编号={0},控制器IP={1},通道号={2}的泵已经补电", pump.DockNo, cmd.RemoteSocket.IP, pump.Channel);
-                        graseby1200ChannelBit |= (byte)(1 << pump.Channel-1); 
+                        //graseby1200ChannelBit |= (byte)(1 << pump.Channel-1);
+                        lock (m_RebootPumpManager)
+                        {
+                            m_RebootPumpManager.UpdateRebootInfo(cmd.RemoteSocket.IP, pump.Channel);
+                        }
                     }
                     else
                     {
@@ -2777,18 +2753,16 @@ namespace  AgingSystem
                     }
                     #endregion
                 }
-
-                //20180326针对1200，添加补电成功后启动的命令，其他泵不启动
-                if (m_CurrentCustomProductID == CustomProductID.Graseby1200 || m_CurrentCustomProductID == CustomProductID.Graseby1200En)
-                {
-                    if (graseby1200ChannelBit>0 && para != null && depleteController != null && depleteController.SocketToken != null)
-                    {
-                        m_CmdManager.SendCmdCharge(para.Rate*10, para.Volume, depleteController.SocketToken, null, null, graseby1200ChannelBit);
-                        Logger.Instance().InfoFormat("CommandResponseForReCharge() 佳士比1200补电命令返回，同时发送启动命令, 启动通道={0}", graseby1200ChannelBit);
-                    }
-                }
-
-                //收到回应后移除报警泵
+                ////20180326针对1200，添加补电成功后启动的命令，其他泵不启动
+                //if (m_CurrentCustomProductID == CustomProductID.Graseby1200 || m_CurrentCustomProductID == CustomProductID.Graseby1200En)
+                //{
+                //    if (graseby1200ChannelBit > 0 && para != null && depleteController != null && depleteController.SocketToken != null)
+                //    {
+                //        m_CmdManager.SendCmdCharge(para.Rate * 10, para.Volume, depleteController.SocketToken, null, null, graseby1200ChannelBit);
+                //        Logger.Instance().InfoFormat("CommandResponseForReCharge() 佳士比1200补电命令返回，同时发送启动命令, 启动通道={0}", graseby1200ChannelBit);
+                //    }
+                //}
+                //收到回应后移除报警泵,可能这层控制器下面还有几个泵没有耗尽，等它们耗尽时，这个队列中自动会重新加入
                 lock (m_DepleteManager)
                 {
                     m_DepleteManager.Remove(cmd.RemoteSocket.IP);
@@ -2797,6 +2771,67 @@ namespace  AgingSystem
         }
 
         #endregion
+
+        #region 检查佳士比1200补电完成后是否重启系列函数 20180401
+        private void CreateCheckRebootThread()
+        {
+            m_bKeepReboot = true;
+            Thread th = new Thread(ProcCheckReboot);
+            th.Start();
+        }
+
+        private void StopCheckRebootThread()
+        {
+            m_bKeepReboot = false;
+            Thread.Sleep(2000);
+            lock (m_RebootPumpManager)
+            {
+                m_RebootPumpManager.Clear();
+            }
+        }
+
+        private void ProcCheckReboot()
+        {
+            byte channels = 0;
+            AgingParameter para = m_DockParameter[m_DockNo] as AgingParameter;
+
+            while (m_bKeepReboot)
+            {
+                for (int i = 0; i < m_RebootPumpManager.RebootPumpQueue.Count; i++)
+                {
+                    Controller rebootController = m_Controllers.Find((x) => { return x.SocketToken != null && x.SocketToken.IP == m_RebootPumpManager.RebootPumpQueue[i].ip; });
+                    channels = m_RebootPumpManager.RebootPumpQueue[i].GenChannel();
+                    if (channels > 0 && rebootController != null && para != null && rebootController.SocketToken != null)
+                    {
+                        m_CmdManager.SendCmdCharge(para.Rate * 10, para.Volume, rebootController.SocketToken, CommandResponseForReboot, null, channels);
+                        Logger.Instance().InfoFormat("ProcCheckReboot() 佳士比1200发送重启命令, IP={0}, 启动通道={1}", rebootController.SocketToken.IPString, channels);
+                    }
+                }
+                Thread.Sleep(5000);
+            }
+        }
+
+        /// <summary>
+        /// 收到回应到立即从队列中删除
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void CommandResponseForReboot(object sender, EventArgs e)
+        {
+            if (e is CmdCharge)
+            {
+                CmdCharge cmd = e as CmdCharge;
+                Logger.Instance().InfoFormat("收到控制器IP={0}的佳士比1200重启命令回应", cmd.RemoteSocket.IPString);
+                //收到回应后移除
+                lock (m_RebootPumpManager)
+                {
+                    m_RebootPumpManager.Remove(cmd.RemoteSocket.IP);
+                }
+            }
+        }
+
+        #endregion
+
 
     }
 }
