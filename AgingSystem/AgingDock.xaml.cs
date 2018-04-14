@@ -1032,7 +1032,7 @@ namespace  AgingSystem
             if (this.AgingStatus != EAgingStatus.AgingComplete)
             {
                 string fileName = DateTime.Now.ToString("yyyy-MM-dd HH_mm_ss_fff") + ".xlsx";
-                ExportExcel(fileName);
+                ExportExcel(fileName,true);
             }
             if (this.AgingStatus != EAgingStatus.AgingComplete)
             {
@@ -1648,7 +1648,12 @@ namespace  AgingSystem
             }
         }
 
-        public void ExportExcel(string fileName)
+        /// <summary>
+        /// 保存老化数据,如果中途人工停止，则isStopByManual = true,方便无纸化系统区别自动结束还是人工结束
+        /// </summary>
+        /// <param name="fileName"></param>
+        /// <param name="isStopByManual">true:(人工停止，数据无效0); false:(自动老化结束,数据有效1)</param>
+        public void ExportExcel(string fileName, bool isStopByManual = false)
         {
             #region 创建文件夹
             string excelDir = "老化结果\\";
@@ -1720,6 +1725,7 @@ namespace  AgingSystem
             worksheet.Cells[1, ++index] = "放电结果";
             worksheet.Cells[1, ++index] = "老化结果";
             worksheet.Cells[1, ++index] = "报警";
+            worksheet.Cells[1, ++index] = "有效数据";
             #endregion 
 
             int rowIndex = 2;
@@ -1734,6 +1740,8 @@ namespace  AgingSystem
                     {
                         if(pumpList[j]!=null)
                         {
+                            Excel.Range pumpNumberingColumn = worksheet.Range[worksheet.Cells[rowIndex, 4], worksheet.Cells[rowIndex, 4]];
+                            pumpNumberingColumn.NumberFormat = "@";  //设置单元格格式为文本类型，文本类型可设置上下标
                             if (m_CurrentCustomProductID == CustomProductID.GrasebyF8)
                             {
                                 #region GrasebyF8
@@ -2042,6 +2050,7 @@ namespace  AgingSystem
 
                                 #endregion
                             }
+                            worksheet.Cells[rowIndex, 18] = isStopByManual==true?"0":"1";//机器编号
                         }
                         if (m_CurrentCustomProductID == CustomProductID.GrasebyF8)
                         {
@@ -2055,6 +2064,8 @@ namespace  AgingSystem
                     }
                 }
             }
+            //Excel.Range pumpNumberingColumn = worksheet.Range[worksheet.Cells[1, 4], worksheet.Cells[rowIndex, 4]];
+            //pumpNumberingColumn.NumberFormat="@";  //设置单元格格式为文本类型，文本类型可设置上下标
             #region 保存到磁盘文件
             if (saveFileName != "")
             {
@@ -2756,15 +2767,6 @@ namespace  AgingSystem
                     }
                     #endregion
                 }
-                ////20180326针对1200，添加补电成功后启动的命令，其他泵不启动
-                //if (m_CurrentCustomProductID == CustomProductID.Graseby1200 || m_CurrentCustomProductID == CustomProductID.Graseby1200En)
-                //{
-                //    if (graseby1200ChannelBit > 0 && para != null && depleteController != null && depleteController.SocketToken != null)
-                //    {
-                //        m_CmdManager.SendCmdCharge(para.Rate * 10, para.Volume, depleteController.SocketToken, null, null, graseby1200ChannelBit);
-                //        Logger.Instance().InfoFormat("CommandResponseForReCharge() 佳士比1200补电命令返回，同时发送启动命令, 启动通道={0}", graseby1200ChannelBit);
-                //    }
-                //}
                 //收到回应后移除报警泵,可能这层控制器下面还有几个泵没有耗尽，等它们耗尽时，这个队列中自动会重新加入
                 lock (m_DepleteManager)
                 {
