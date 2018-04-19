@@ -140,6 +140,7 @@ namespace  AgingSystem
                 }
                 else
                 {
+                    detail.lbPumpSN.Content = m_PumpLocationList[i].Item4;
                     detail.lbPumpLocation.Content = string.Format("{0}-{1}-{2}", m_DockNo, m_PumpLocationList[i].Item2, m_PumpLocationList[i].Item3);
                 }
                 detail.Name = "detail" + (i + 1).ToString();

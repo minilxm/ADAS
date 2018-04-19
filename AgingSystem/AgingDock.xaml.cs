@@ -90,7 +90,10 @@ namespace  AgingSystem
 
         //以下定义老化补电线程必须变量
         private DepletePumpManager m_DepleteManager = new DepletePumpManager();                //多线程共同访问需要加锁
+        private RebootPumpManager m_RebootPumpManager = new RebootPumpManager();               //多线程共同访问需要加锁
+
         private bool m_bKeepReCharge = true;
+        private bool m_bKeepReboot = true;
 
         private DateTime m_LastRechargeTime = DateTime.MinValue;                                //货架上最后一个补电开始时间
 
@@ -334,11 +337,15 @@ namespace  AgingSystem
         {
             if (cmd != null)
             {
-                long ip = ControllerManager.GetLongIPFromSocket(cmd.RemoteSocket);
-                int row = ControllerManager.Instance().Get(ip).RowNo;
-                int dockNo = ControllerManager.Instance().Get(ip).DockNo;
-                string msg = string.Format("推送泵信息时，{0}号货架第{1}层控制器无响应！", dockNo, row);
-                MessageBox.Show(msg);
+                try
+                {
+                    long ip = ControllerManager.GetLongIPFromSocket(cmd.RemoteSocket);
+                    int row = ControllerManager.Instance().Get(ip).RowNo;
+                    int dockNo = ControllerManager.Instance().Get(ip).DockNo;
+                    string msg = string.Format("推送泵信息时，{0}号货架第{1}层控制器无响应！", dockNo, row);
+                    MessageBox.Show(msg);
+                }
+                catch { }
             }
             else
             {
@@ -424,10 +431,7 @@ namespace  AgingSystem
             {
                 Logger.Instance().Info("充电时间已满，准备开始老化放电！");
                 StopChargeTimer();
-                //此处调用老化放电命令，因为上电时间是同时的，所以，放电时间也是同时的，不用每个泵单独发
-                //m_CmdManager.SendCmdDischarge()
-                //找出那些已经连接的SOCKET
-                //List<Controller> controller = ControllerManager.Instance().Get(m_DockNo);
+                
                 if (m_Controllers.Count <= 0)
                 {
                     MessageBox.Show("配置文件出错，未检测到相关货架的配置文件！");
@@ -435,40 +439,7 @@ namespace  AgingSystem
                 }
                 //启动放电线程，30分钟倒计时，处理放电。给每个控制器发送放电命令后等待反馈，超时后进入下一个发送周期
                 CreateCheckDisChargeThread();
-                //int iChannel = 0;
-                //byte channel = 0;
-                //List<Controller> controllers = m_Controllers.FindAll((x) => { return x.SocketToken != null; });
-                //if (controllers != null && controllers.Count > 0)
-                //{
-                //for (int i = 0; i < controllers.Count; i++)
-                //{
-                //    if(!m_HashRowNo.ContainsKey(controllers[i].RowNo))
-                //        continue;
-                //    iChannel = (int)m_HashRowNo[controllers[i].RowNo];
-                //    channel = (byte)(iChannel & 0x000000FF);
-                //    //老化放电命令不要回调函数，因为控制器可能在发送放电命令时掉线了
-                //    //如果没有回应就不发了，等控制器重新连接上时，它会自动发送报警数据包，此包中带有泵的电源信息，
-                //    //如果是AC电源，则表示还没有进行放电操作，重新发送放电指令。
-                //    m_CmdManager.SendCmdDischarge(controllers[i].SocketToken, null, null, channel);   
-                //}
-                //foreach(var obj in controllers)
-                //{
-                //    if(obj.SocketToken!=null)
-                //    { 
-                //        obj.BeginDischargeTime = DateTime.Now;
-                //        foreach(var agingPump in obj.AgingPumpList)
-                //        {
-                //            if(agingPump!=null)
-                //            { 
-                //                agingPump.AgingStatus = EAgingStatus.DisCharging;//"老化放电中";
-                //                agingPump.BeginDischargeTime = DateTime.Now;
-                //            }
-                //        }
-                //    }
-                //}
                 this.Dispatcher.BeginInvoke(new DeleSetBackGround(SetStatusAndBackground), new object[] { Colors.Yellow, EAgingStatus.DisCharging/*"老化放电中"*/});
-
-                //}
             }
         }
         /// <summary>
@@ -904,7 +875,14 @@ namespace  AgingSystem
                     iChannel = (int)m_HashRowNo[currentObj.RowNo];
                     channel = (byte)(iChannel & 0x000000FF);
                     if (currentObj.SocketToken != null)
-                        m_CmdManager.SendPumpType(pid, (ushort)DockWindow.m_QueryInterval, currentObj.SocketToken, CommandResponse, CommandTimeoutResponse, channel);
+                    {
+                        ProductID pidTemp = pid;
+                        if (pid == ProductID.Graseby1200En)
+                        {
+                            pidTemp = ProductID.Graseby1200;
+                        }
+                        m_CmdManager.SendPumpType(pidTemp, (ushort)DockWindow.m_QueryInterval, currentObj.SocketToken, CommandResponse, CommandTimeoutResponse, channel);
+                    }
                     else
                     {
                         Logger.Instance().ErrorFormat("ProcStartAging()->发送泵信息命令时，{0}号货架第{1}层控制器SocketToken为null", currentObj.DockNo, currentObj.RowNo);
@@ -955,7 +933,7 @@ namespace  AgingSystem
                 }
                 #endregion
             }
-            if(counter<=0)
+            if (counter <= 0)
             {
                 OnEnableControls(true);
             }
@@ -967,6 +945,10 @@ namespace  AgingSystem
                 //补电线程启动，等待队列中有新的耗尽泵进入
                 m_bKeepReCharge = true;
                 CreateCheckReChargeThread();
+                //1200重启线程启动
+                m_bKeepReboot = true;
+                if (m_CurrentCustomProductID == CustomProductID.Graseby1200 || m_CurrentCustomProductID == CustomProductID.Graseby1200En)
+                    CreateCheckRebootThread();
             }
         }
 
@@ -982,6 +964,8 @@ namespace  AgingSystem
                 lbCompleteCount.Content="完成数量:0";
                 //关闭补电线程 20170708
                 StopCheckReChargeThread();
+                //关闭1200重启函数
+                StopCheckRebootThread();
                 m_bKeepCheckPumpStatus = false;
                 StopAging();
                 StartCheckPumpStopStatusTimer();//启动时钟
@@ -1048,7 +1032,7 @@ namespace  AgingSystem
             if (this.AgingStatus != EAgingStatus.AgingComplete)
             {
                 string fileName = DateTime.Now.ToString("yyyy-MM-dd HH_mm_ss_fff") + ".xlsx";
-                ExportExcel(fileName);
+                ExportExcel(fileName,true);
             }
             if (this.AgingStatus != EAgingStatus.AgingComplete)
             {
@@ -1156,7 +1140,6 @@ namespace  AgingSystem
             }
         }
         #endregion
-
 
         private void EnableControls(bool bEnabled = false)
         {
@@ -1312,7 +1295,8 @@ namespace  AgingSystem
                 #region //2017-03-09 检查放电命令遗漏的控制器，这个指令没有被执行时，可以通过报警信息中的电源信息间接得知
                 if (count > 0)
                 {
-                    byte pumpChannel = 0xFF;
+                    byte pumpChannel = 0xFF;//自然数1~8,不是位
+                    byte bitChannel = 1;
                     try
                     {
                         for (int index = 0; index < count; index++)
@@ -1321,7 +1305,8 @@ namespace  AgingSystem
                             AgingPump pump = controller.FindPump(dockNo, rowNo, pumpChannel);
                             if (pump != null && pump.AgingStatus == EAgingStatus.DisCharging && cmd.PumpPackages[index].Power.PowerStatus == PumpPowerStatus.AC)
                             {
-                                m_CmdManager.SendCmdDischarge(controller.SocketToken, null, null, pumpChannel);
+                                bitChannel = (byte)(1 << pumpChannel - 1);//给控制器发命令时，需要按位发送
+                                m_CmdManager.SendCmdDischarge(controller.SocketToken, null, null, bitChannel);
                                 if (controller.AgingStatus < EAgingStatus.DisCharging)
                                     controller.AgingStatus = EAgingStatus.DisCharging;
                                 pump.AgingStatus = EAgingStatus.DisCharging;
@@ -1663,7 +1648,12 @@ namespace  AgingSystem
             }
         }
 
-        public void ExportExcel(string fileName)
+        /// <summary>
+        /// 保存老化数据,如果中途人工停止，则isStopByManual = true,方便无纸化系统区别自动结束还是人工结束
+        /// </summary>
+        /// <param name="fileName"></param>
+        /// <param name="isStopByManual">true:(人工停止，数据无效0); false:(自动老化结束,数据有效1)</param>
+        public void ExportExcel(string fileName, bool isStopByManual = false)
         {
             #region 创建文件夹
             string excelDir = "老化结果\\";
@@ -1735,6 +1725,7 @@ namespace  AgingSystem
             worksheet.Cells[1, ++index] = "放电结果";
             worksheet.Cells[1, ++index] = "老化结果";
             worksheet.Cells[1, ++index] = "报警";
+            worksheet.Cells[1, ++index] = "有效数据";
             #endregion 
 
             int rowIndex = 2;
@@ -1749,6 +1740,8 @@ namespace  AgingSystem
                     {
                         if(pumpList[j]!=null)
                         {
+                            Excel.Range pumpNumberingColumn = worksheet.Range[worksheet.Cells[rowIndex, 4], worksheet.Cells[rowIndex, 4]];
+                            pumpNumberingColumn.NumberFormat = "@";  //设置单元格格式为文本类型，文本类型可设置上下标
                             if (m_CurrentCustomProductID == CustomProductID.GrasebyF8)
                             {
                                 #region GrasebyF8
@@ -2057,6 +2050,7 @@ namespace  AgingSystem
 
                                 #endregion
                             }
+                            worksheet.Cells[rowIndex, 18] = isStopByManual==true?"0":"1";//机器编号
                         }
                         if (m_CurrentCustomProductID == CustomProductID.GrasebyF8)
                         {
@@ -2070,6 +2064,8 @@ namespace  AgingSystem
                     }
                 }
             }
+            //Excel.Range pumpNumberingColumn = worksheet.Range[worksheet.Cells[1, 4], worksheet.Cells[rowIndex, 4]];
+            //pumpNumberingColumn.NumberFormat="@";  //设置单元格格式为文本类型，文本类型可设置上下标
             #region 保存到磁盘文件
             if (saveFileName != "")
             {
@@ -2158,6 +2154,7 @@ namespace  AgingSystem
             byte channel = (byte)(iChannel & 0x000000FF);
             //永远等待下去，直到有信号出现为止,若要关闭，将m_bKeepCheckPumpStatus设置为false
             //如果该控制器已经全部启动了，则终止线程
+            ProductID pid = m_CurrentProductID;
             while (m_bKeepCheckPumpStatus && !controller.IsRunning)
             {
                 if (m_bCanStartCheck)
@@ -2166,9 +2163,11 @@ namespace  AgingSystem
                     {
                         //发送泵类型命令后等待它的回应，根据回应结果判断是否要重新发送启动命令
                         //命令的返回及后续操作，由另外一个线程来操作，这里只需要等待即可
-                        m_CmdManager.SendPumpType(m_CurrentProductID, m_QueryInterval, controller.SocketToken, CommandResponseForCheckPumpStatus, null, channel);
+                        if (m_CurrentProductID == ProductID.Graseby1200En)
+                            pid = ProductID.Graseby1200;
+                        m_CmdManager.SendPumpType(pid, m_QueryInterval, controller.SocketToken, CommandResponseForCheckPumpStatus, null, channel);
                         //每个控制器等待10秒,由CommandResponseForCheckPumpStatus函数来更新状态
-                        Thread.Sleep(10000);
+                        Thread.Sleep(30000);
                     }
                 }
                 Thread.Sleep(1000);
@@ -2279,24 +2278,49 @@ namespace  AgingSystem
                     break;
                 bitIndex = (byte)((bitIndex << 1) & 0x00ff);
             }
-            if(channels.Count!=cmd.PumpStatusList.Count)
+            if (m_CurrentCustomProductID == CustomProductID.GrasebyF8)
             {
-                Logger.Instance().Error("AgingDock::CheckChannelAndPumpStatus() Error, 通道号与泵状态的个数不相等");
-                //如果不相等，那么给所有泵发送启动命令。
-                return cmd.Channel;
+                if (channels.Count*2 != cmd.PumpStatusList.Count)
+                {
+                    Logger.Instance().Error("AgingDock::CheckChannelAndPumpStatus() Error, F8泵状态的个数不是通道号个数的2倍");
+                    //如果不相等，那么给所有泵发送启动命令。
+                    return cmd.Channel;
+                }
+                else
+                {
+                    byte retChannel = 0;
+                    for (int iLoop = 0; iLoop < cmd.PumpStatusList.Count; iLoop++)
+                    {
+                        if (cmd.PumpStatusList[iLoop] == PumpStatus.Stop
+                           || cmd.PumpStatusList[iLoop] == PumpStatus.Pause
+                           || cmd.PumpStatusList[iLoop] == PumpStatus.Off)
+                            retChannel |= channels[iLoop/2];
+                    }
+                    Logger.Instance().InfoFormat("AgingDock::CheckChannelAndPumpStatus(),计算出没有启动的通道={0}", retChannel);
+                    return retChannel;
+                }
             }
             else
             {
-                byte retChannel = 0;
-                for(int iLoop=0;iLoop<channels.Count;iLoop++)
+                if (channels.Count != cmd.PumpStatusList.Count)
                 {
-                    if (cmd.PumpStatusList[iLoop] == PumpStatus.Stop
-                       || cmd.PumpStatusList[iLoop] == PumpStatus.Pause
-                       || cmd.PumpStatusList[iLoop] == PumpStatus.Off)
-                        retChannel |= channels[iLoop];
+                    Logger.Instance().Error("AgingDock::CheckChannelAndPumpStatus() Error, 通道号与泵状态的个数不相等");
+                    //如果不相等，那么给所有泵发送启动命令。
+                    return cmd.Channel;
                 }
-                Logger.Instance().InfoFormat("AgingDock::CheckChannelAndPumpStatus(),计算出没有启动的通道={0}", retChannel);
-                return retChannel;
+                else
+                {
+                    byte retChannel = 0;
+                    for (int iLoop = 0; iLoop < channels.Count; iLoop++)
+                    {
+                        if (cmd.PumpStatusList[iLoop] == PumpStatus.Stop
+                           || cmd.PumpStatusList[iLoop] == PumpStatus.Pause
+                           || cmd.PumpStatusList[iLoop] == PumpStatus.Off)
+                            retChannel |= channels[iLoop];
+                    }
+                    Logger.Instance().InfoFormat("AgingDock::CheckChannelAndPumpStatus(),计算出没有启动的通道={0}", retChannel);
+                    return retChannel;
+                }
             }
         }
 
@@ -2348,13 +2372,16 @@ namespace  AgingSystem
             byte channel = (byte)(iChannel & 0x000000FF);
             //永远等待下去，直到有信号出现为止,若要关闭，将m_bKeepCheckPumpStopStatus设置为false
             //如果该控制器已经全部启动了，则终止线程
+            ProductID pid = m_CurrentProductID;
             while (m_bKeepCheckPumpStopStatus && controller.IsRunning)
             {
                 if (controller.SocketToken != null)
                 {
                     //发送泵类型命令后等待它的回应，根据回应结果判断是否要重新发送启动命令
                     //命令的返回及后续操作，由另外一个线程来操作，这里只需要等待即可
-                    m_CmdManager.SendPumpType(m_CurrentProductID, m_QueryInterval, controller.SocketToken, CommandResponseForCheckPumpStopStatus, null, channel);
+                    if (m_CurrentProductID == ProductID.Graseby1200En)
+                        pid = ProductID.Graseby1200;
+                    m_CmdManager.SendPumpType(pid, m_QueryInterval, controller.SocketToken, CommandResponseForCheckPumpStopStatus, null, channel);
                     //每个控制器等待2秒,由CommandResponseForCheckPumpStopStatus函数来更新状态
                     Thread.Sleep(2000);
                 }
@@ -2451,25 +2478,52 @@ namespace  AgingSystem
                     break;
                 bitIndex = (byte)((bitIndex << 1) & 0x00ff);
             }
-            if (channels.Count != cmd.PumpStatusList.Count)
+
+            if (m_CurrentCustomProductID == CustomProductID.GrasebyF8)
             {
-                Logger.Instance().Error("AgingDock::CheckChannelAndPumpStopStatus() Error, 通道号与泵状态的个数不相等");
-                //如果不相等，那么给所有泵发送启动命令。
-                return cmd.Channel;
+                if (channels.Count * 2 != cmd.PumpStatusList.Count)
+                {
+                    Logger.Instance().Error("AgingDock::CheckChannelAndPumpStopStatus() Error, F8泵状态的个数不是通道号个数的2倍");
+                    //如果不相等，那么给所有泵发送stop命令。
+                    return cmd.Channel;
+                }
+                else
+                {
+                    byte retChannel = 0;
+                    for (int iLoop = 0; iLoop < cmd.PumpStatusList.Count; iLoop++)
+                    {
+                        if (cmd.PumpStatusList[iLoop] == PumpStatus.Run
+                           || cmd.PumpStatusList[iLoop] == PumpStatus.Bolus
+                           || cmd.PumpStatusList[iLoop] == PumpStatus.Purging
+                           || cmd.PumpStatusList[iLoop] == PumpStatus.KVO)
+                            retChannel |= channels[iLoop/2];
+                    }
+                    Logger.Instance().InfoFormat("AgingDock::CheckChannelAndPumpStopStatus(),计算出没有停止的通道={0}", retChannel);
+                    return retChannel;
+                }
             }
             else
             {
-                byte retChannel = 0;
-                for (int iLoop = 0; iLoop < channels.Count; iLoop++)
+                if (channels.Count != cmd.PumpStatusList.Count)
                 {
-                    if (cmd.PumpStatusList[iLoop] == PumpStatus.Run
-                       || cmd.PumpStatusList[iLoop] == PumpStatus.Bolus
-                       || cmd.PumpStatusList[iLoop] == PumpStatus.Purging
-                       || cmd.PumpStatusList[iLoop] == PumpStatus.KVO)
-                        retChannel |= channels[iLoop];
+                    Logger.Instance().Error("AgingDock::CheckChannelAndPumpStopStatus() Error, 通道号与泵状态的个数不相等");
+                    //如果不相等，那么给所有泵发送启动命令。
+                    return cmd.Channel;
                 }
-                Logger.Instance().InfoFormat("AgingDock::CheckChannelAndPumpStopStatus(),计算出没有停止的通道={0}", retChannel);
-                return retChannel;
+                else
+                {
+                    byte retChannel = 0;
+                    for (int iLoop = 0; iLoop < channels.Count; iLoop++)
+                    {
+                        if (cmd.PumpStatusList[iLoop] == PumpStatus.Run
+                           || cmd.PumpStatusList[iLoop] == PumpStatus.Bolus
+                           || cmd.PumpStatusList[iLoop] == PumpStatus.Purging
+                           || cmd.PumpStatusList[iLoop] == PumpStatus.KVO)
+                            retChannel |= channels[iLoop];
+                    }
+                    Logger.Instance().InfoFormat("AgingDock::CheckChannelAndPumpStopStatus(),计算出没有停止的通道={0}", retChannel);
+                    return retChannel;
+                }
             }
         }
 
@@ -2541,7 +2595,7 @@ namespace  AgingSystem
                 long ip = ControllerManager.GetLongIPFromSocket(cmd.RemoteSocket);
                 m_HashDisChargeController.Remove(ip);
                 Controller controller = m_Controllers.Find((x) => { return x.IP == ip; });
-                if (controller.SocketToken != null)
+                if (controller!=null && controller.SocketToken != null)
                 {
                     controller.BeginDischargeTime = DateTime.Now;
                     foreach (var agingPump in controller.AgingPumpList)
@@ -2573,7 +2627,7 @@ namespace  AgingSystem
         private void StopCheckReChargeThread()
         {
             m_bKeepReCharge = false;
-            Thread.Sleep(5000);
+            Thread.Sleep(2000);
             lock (m_DepleteManager)
             {
                 m_DepleteManager.Clear();
@@ -2627,7 +2681,8 @@ namespace  AgingSystem
                     return;
                 if (pumpList.channels.Count == 0)
                     return;
-                //byte channel = 0;
+                AgingParameter para = m_DockParameter[m_DockNo] as AgingParameter;
+                //byte graseby1200ChannelBit = 0;
                 foreach (var ch in pumpList.channels)
                 {
                     AgingPump pump = null;
@@ -2644,6 +2699,14 @@ namespace  AgingSystem
                         pump.BeginRechargeTime = DateTime.Now;
                         pump.AgingStatus = EAgingStatus.Recharging;
                         Logger.Instance().InfoFormat("货架编号={0},控制器IP={1},通道号={2}的泵已经补电", pump.DockNo, cmd.RemoteSocket.IP, pump.Channel);
+                        //graseby1200ChannelBit |= (byte)(1 << pump.Channel-1);
+                        if (m_CurrentCustomProductID == CustomProductID.Graseby1200 || m_CurrentCustomProductID == CustomProductID.Graseby1200En)
+                        {
+                            lock (m_RebootPumpManager)
+                            {
+                                m_RebootPumpManager.UpdateRebootInfo(cmd.RemoteSocket.IP, pump.Channel);
+                            }
+                        }
                     }
                     else
                     {
@@ -2704,7 +2767,7 @@ namespace  AgingSystem
                     }
                     #endregion
                 }
-                //收到回应后移除报警泵
+                //收到回应后移除报警泵,可能这层控制器下面还有几个泵没有耗尽，等它们耗尽时，这个队列中自动会重新加入
                 lock (m_DepleteManager)
                 {
                     m_DepleteManager.Remove(cmd.RemoteSocket.IP);
@@ -2713,6 +2776,67 @@ namespace  AgingSystem
         }
 
         #endregion
+
+        #region 检查佳士比1200补电完成后是否重启系列函数 20180401
+        private void CreateCheckRebootThread()
+        {
+            m_bKeepReboot = true;
+            Thread th = new Thread(ProcCheckReboot);
+            th.Start();
+        }
+
+        private void StopCheckRebootThread()
+        {
+            m_bKeepReboot = false;
+            Thread.Sleep(2000);
+            lock (m_RebootPumpManager)
+            {
+                m_RebootPumpManager.Clear();
+            }
+        }
+
+        private void ProcCheckReboot()
+        {
+            byte channels = 0;
+            AgingParameter para = m_DockParameter[m_DockNo] as AgingParameter;
+
+            while (m_bKeepReboot)
+            {
+                for (int i = 0; i < m_RebootPumpManager.RebootPumpQueue.Count; i++)
+                {
+                    Controller rebootController = m_Controllers.Find((x) => { return x.SocketToken != null && x.SocketToken.IP == m_RebootPumpManager.RebootPumpQueue[i].ip; });
+                    channels = m_RebootPumpManager.RebootPumpQueue[i].GenChannel();
+                    if (channels > 0 && rebootController != null && para != null && rebootController.SocketToken != null)
+                    {
+                        m_CmdManager.SendCmdCharge(para.Rate * 10, para.Volume, rebootController.SocketToken, CommandResponseForReboot, null, channels);
+                        Logger.Instance().InfoFormat("ProcCheckReboot() 佳士比1200发送重启命令, IP={0}, 启动通道={1}", rebootController.SocketToken.IPString, channels);
+                    }
+                }
+                Thread.Sleep(5000);
+            }
+        }
+
+        /// <summary>
+        /// 收到回应到立即从队列中删除
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void CommandResponseForReboot(object sender, EventArgs e)
+        {
+            if (e is CmdCharge)
+            {
+                CmdCharge cmd = e as CmdCharge;
+                Logger.Instance().InfoFormat("收到控制器IP={0}的佳士比1200重启命令回应", cmd.RemoteSocket.IPString);
+                //收到回应后移除
+                lock (m_RebootPumpManager)
+                {
+                    m_RebootPumpManager.Remove(cmd.RemoteSocket.IP);
+                }
+            }
+        }
+
+        #endregion
+
 
     }
 }

@@ -91,6 +91,7 @@
     <Compile Include="Configuration.xaml.cs">
       <DependentUpon>Configuration.xaml</DependentUpon>
     </Compile>
+    <Compile Include="RebootPumpManager.cs" />
     <Compile Include="DepletePumpManager.cs" />
     <Compile Include="DetailList.xaml.cs">
       <DependentUpon>DetailList.xaml</DependentUpon>

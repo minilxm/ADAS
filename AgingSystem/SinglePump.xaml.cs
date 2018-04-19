@@ -147,7 +147,7 @@ namespace  AgingSystem
         private void OnSerialNoKeyUp(object sender, KeyEventArgs e)
         {
             e.Handled = false;
-            if (tbSerialNo.Text.Length>=11)
+            if (tbSerialNo.Text.Length>=27)
             {
                 if (OnSerialNoTypeIn!=null)
                 {

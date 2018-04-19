@@ -412,6 +412,8 @@ namespace AsyncSocket
             userToken.ConnectSocket = acceptEventArgs.AcceptSocket;
             userToken.ConnectDateTime = DateTime.Now;
             userToken.ActiveDateTime = DateTime.Now;
+            if (userToken == null || userToken.ConnectSocket == null)
+                return;
             //第一次连接要请求序列号
             if(MappingIP!=null)
             {
@@ -424,7 +426,8 @@ namespace AsyncSocket
             try
             {
                 //如果 I/O 操作挂起，将返回 true。 操作完成时，将引发 e 参数的 SocketAsyncEventArgs.Completed 事件。 
-                //如果 I/O 操作同步完成，将返回 false。 在这种情况下，将不会引发 e 参数的 SocketAsyncEventArgs.Completed 事件，并且可能在方法调用返回后立即检查作为参数传递的 e 对象以检索操作的结果。 
+                //如果 I/O 操作同步完成，将返回 false。 在这种情况下，将不会引发 e 参数的 SocketAsyncEventArgs.Completed 事件，
+                //并且可能在方法调用返回后立即检查作为参数传递的 e 对象以检索操作的结果。 
                 bool willRaiseEvent = userToken.ConnectSocket.ReceiveAsync(userToken.ReceiveEventArgs); //投递接收请求
                 if (!willRaiseEvent)
                 {

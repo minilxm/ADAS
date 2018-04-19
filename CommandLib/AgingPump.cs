@@ -13,7 +13,7 @@ namespace Cmd
     {
         private int                        m_DockNo;
         private int                        m_RowNo;
-        private byte                       m_Channel;                                             //这个泵的通道号，由报警信息上传得到
+        private byte                       m_Channel;                                             //这个泵的通道号，由报警信息上传得到,是自然数1~8,并不是按位定义
         private string                     m_PumpType                 = string.Empty;              //机器型号
         private EAgingStatus               m_AgingStatus              = EAgingStatus.Unknown;      //当前老化状态（含红色报警）
         private EAgingStatus               m_RedAlarmStatus           = EAgingStatus.Unknown;      //有红色报警
@@ -57,7 +57,7 @@ namespace Cmd
             set { m_RowNo = value; }
         }
         /// <summary>
-        /// 所在列号
+        /// 所在列号,自然数1~8
         /// </summary>
         public byte Channel
         {
@@ -364,6 +364,7 @@ namespace Cmd
             Hashtable alarmMetrix = null;
             uint depletealArmIndex = 0, lowVolArmIndex = 0;//耗尽和低电压索引
             uint completeArmIndex = 0, willCompleteArmIndex = 0;//输液结束和输液即将结束
+            uint forgetStartAlarmIndex = 0; //未启动
 
             #region //查询耗尽.低电输液结束和输液即将结束4种类型的报警索引
             switch (pid)
@@ -388,6 +389,7 @@ namespace Cmd
                     lowVolArmIndex = 0x00000001;
                     completeArmIndex = 0x00040000;
                     willCompleteArmIndex = 0x00000004;
+                    forgetStartAlarmIndex = 0x00000002; 
                     break;
                 case ProductID.GrasebyF6:
                     alarmMetrix = AlarmMetrix.Instance().AlarmMetrixF6;
@@ -402,6 +404,7 @@ namespace Cmd
                     lowVolArmIndex = 0x00000001;
                     completeArmIndex = 0x00040000;
                     willCompleteArmIndex = 0x00000004;
+                    forgetStartAlarmIndex = 0x00000002; 
                     break;
                 case ProductID.Graseby1200:
                     alarmMetrix = AlarmMetrix.Instance().AlarmMetrix1200;
@@ -436,7 +439,7 @@ namespace Cmd
             }
                 #endregion
 
-            uint filterAlarm = m_Alarm & (~(depletealArmIndex | lowVolArmIndex | completeArmIndex | willCompleteArmIndex));
+            uint filterAlarm = m_Alarm & (~(depletealArmIndex | lowVolArmIndex | completeArmIndex | willCompleteArmIndex | forgetStartAlarmIndex));
             if(filterAlarm>0)
                 return false;
             else

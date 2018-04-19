@@ -53,6 +53,8 @@ namespace Cmd
         public CmdSendPumpType(ProductID pid, ushort queryInterval)
             : base(0x00, 0x02)
         {
+            if (pid == ProductID.Graseby1200En)
+                pid = ProductID.Graseby1200;
             m_ProductID = pid;
             m_QueryInterval = queryInterval;
         }

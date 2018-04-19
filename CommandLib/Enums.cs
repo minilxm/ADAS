@@ -90,7 +90,7 @@ namespace Cmd
         GrasebyF6   = 0x05,
         Graseby1200 = 0x06,
         Graseby1200En = 0xFF-0x06,
-        GrasebyF8 = 0x07,//F8默认情况下只用1通道，双通道启动先不考虑
+        GrasebyF8 = 0x03,//F8默认情况下只用1通道，双通道启动先不考虑 GrasebyF8 = 0x07 一道
         //GrasebyF8_2 = 0x08,
         GrasebyC6T  = 0x09,
         Graseby2000 = 0x0A,
